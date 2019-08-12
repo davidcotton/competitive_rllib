@@ -1,6 +1,5 @@
 import argparse
 
-import gym
 from gym import spaces
 import numpy as np
 import ray
@@ -11,7 +10,7 @@ from ray.rllib.models.tf.misc import get_activation_fn, flatten
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils import try_import_tf
 
-from src.envs.connect4_env import Connect4Env
+from src.envs import Connect4Env
 from src.policies import RandomPolicy
 
 tf = try_import_tf()
@@ -178,7 +177,7 @@ if __name__ == "__main__":
         stop={
             # 'timesteps_total': 400000
             # 'timesteps_total': 1000,
-            'policy_reward_mean': {'learned': 0.99},
+            'policy_reward_mean': {'learned': 0.95},
         },
         config={
             'env': Connect4Env,
