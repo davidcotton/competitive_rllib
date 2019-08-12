@@ -1,5 +1,4 @@
 import argparse
-import random
 
 import gym
 from gym import spaces
@@ -9,12 +8,11 @@ from ray import tune
 from ray.rllib.models import Model, ModelCatalog
 from ray.rllib.models.preprocessors import Preprocessor
 from ray.rllib.models.tf.misc import get_activation_fn, flatten
-from ray.rllib.policy.policy import Policy
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils import try_import_tf
 
 from src.envs.connect4_env import Connect4Env
-
+from src.policies import RandomPolicy
 
 tf = try_import_tf()
 POLICY = 'PG'
@@ -49,64 +47,6 @@ class FlattenObsPreprocessor(Preprocessor):
             if k == 'board':
                 observation[k] = np.ravel(v)
         return observation
-
-
-class RandomHeuristic(Policy):
-    """Pick a random move and stick with it for the entire episode."""
-
-    def __init__(self, observation_space, action_space, config):
-        Policy.__init__(self, observation_space, action_space, config)
-
-    # def get_initial_state(self):
-    #     return [random.choice([ROCK, PAPER, SCISSORS])]
-
-    def compute_actions(self,
-                        obs_batch,
-                        state_batches,
-                        prev_action_batch=None,
-                        prev_reward_batch=None,
-                        info_batch=None,
-                        episodes=None,
-                        **kwargs):
-        """Compute actions for the current policy.
-
-        Arguments:
-            obs_batch (np.ndarray): batch of observations
-            state_batches (list): list of RNN state input batches, if any
-            prev_action_batch (np.ndarray): batch of previous action values
-            prev_reward_batch (np.ndarray): batch of previous rewards
-            info_batch (info): batch of info objects
-            episodes (list): MultiAgentEpisode for each obs in obs_batch.
-                This provides access to all of the internal episode state,
-                which may be useful for model-based or multiagent algorithms.
-            kwargs: forward compatibility placeholder
-
-        Returns:
-            actions (np.ndarray): batch of output actions, with shape like [BATCH_SIZE, ACTION_SHAPE].
-            state_outs (list): list of RNN state output batches, if any, with shape like [STATE_SIZE, BATCH_SIZE].
-            info (dict): dictionary of extra feature batches, if any, with shape like
-                {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
-        """
-        # print('RandomHeuristic.obs_batch ->', obs_batch)
-        actions = []
-        for obs in obs_batch:
-            action_mask, obs = obs[:7], obs[7:]
-            valid_actions = [i for i in range(7) if action_mask[i]]
-            # print('RandomHeuristic.valid_actions ->', valid_actions, '\n\n')
-            actions.append(random.choice(valid_actions))
-        actions = np.array(actions)
-        # print('RandomHeuristic.compute_actions() ->', actions)
-
-        return actions, state_batches, {}
-
-    def learn_on_batch(self, samples):
-        pass
-
-    def get_weights(self):
-        pass
-
-    def set_weights(self, weights):
-        pass
 
 
 class MyVisionNetwork(Model):
@@ -243,18 +183,18 @@ if __name__ == "__main__":
         config={
             'env': Connect4Env,
             # "gamma": 0.9,
-            "num_workers": 4,
-            'num_envs_per_worker': 4,
-            # 'num_workers': 0,
-            # 'num_envs_per_worker': 1,
+            # "num_workers": 4,
+            # 'num_envs_per_worker': 4,
+            'num_workers': 0,
+            'num_envs_per_worker': 1,
             "num_gpus": 1,
             # 'sample_batch_size': 10,
             # 'train_batch_size': 200,
             'multiagent': {
                 'policies_to_train': ['learned'],
                 'policies': {
-                    'random': (RandomHeuristic, obs_space, action_space, {}),
-                    'random2': (RandomHeuristic, obs_space, action_space, {}),
+                    'random': (RandomPolicy, obs_space, action_space, {}),
+                    'random2': (RandomPolicy, obs_space, action_space, {}),
                     'learned': (None, obs_space, action_space, {
                         'model': {
                             'custom_model': 'pa_model',
