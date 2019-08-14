@@ -1,7 +1,10 @@
+import logging
 import random
 
 import numpy as np
 from ray.rllib.policy.policy import Policy
+
+logger = logging.getLogger('ray.rllib')
 
 
 class RandomPolicy(Policy):
@@ -38,8 +41,9 @@ class RandomPolicy(Policy):
                 {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
         """
         actions = []
+        # logger.debug('obs_batch: ' + str(obs_batch))
         for obs in obs_batch:
-            action_mask, board = obs[:7], obs[7:]  # for some reason RLLIB concats the obs dict parts together
+            action_mask, board = obs[:7], obs[7:]  # DictPreprocessor concats the obs dict parts together
             valid_actions = [i for i in range(7) if action_mask[i]]
             actions.append(random.choice(valid_actions))
         actions = np.array(actions)
