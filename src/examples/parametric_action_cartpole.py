@@ -130,11 +130,13 @@ class ParametricActionsModel(DistributionalQModel, TFModelV2):
                  true_obs_shape=(4, ),
                  action_embed_size=2,
                  **kw):
-        super(ParametricActionsModel, self).__init__(
-            obs_space, action_space, num_outputs, model_config, name, **kw)
+        super(ParametricActionsModel, self).__init__(obs_space, action_space, num_outputs, model_config, name, **kw)
         self.action_embed_model = FullyConnectedNetwork(
-            Box(-1, 1, shape=true_obs_shape), action_space, action_embed_size,
-            model_config, name + "_action_embed")
+            Box(-1, 1, shape=true_obs_shape),
+            action_space,
+            action_embed_size,
+            model_config,
+            name + "_action_embed")
         self.register_variables(self.action_embed_model.variables())
 
     def forward(self, input_dict, state, seq_lens):
@@ -143,9 +145,7 @@ class ParametricActionsModel(DistributionalQModel, TFModelV2):
         action_mask = input_dict["obs"]["action_mask"]
 
         # Compute the predicted action embedding
-        action_embed, _ = self.action_embed_model({
-            "obs": input_dict["obs"]["cart"]
-        })
+        action_embed, _ = self.action_embed_model({"obs": input_dict["obs"]["cart"]})
 
         # Expand the model output to [BATCH, 1, EMBED_SIZE]. Note that the
         # avail actions tensor is of shape [BATCH, MAX_ACTIONS, EMBED_SIZE].
