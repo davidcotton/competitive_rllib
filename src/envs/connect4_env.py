@@ -37,13 +37,7 @@ class Connect4Env(MultiAgentEnv):
         self.game = Connect4(self.game.env_config)
         self.boards = [np.zeros((self.game.board_height, self.game.board_width), dtype=np.uint8) for _ in range(2)]
         action_mask = self.game.get_action_mask()
-        # obs_dict = {i: {'board': self.get_state(i), 'action_mask': action_mask} for i in range(2)}
-        obs_dict = {
-            0: {'board': self.get_state(0), 'action_mask': action_mask},
-            1: {'board': self.get_state(1), 'action_mask': action_mask},
-            # 0: self.get_state(0),
-            # 1: self.get_state(1),
-        }
+        obs_dict = {i: {'board': self.get_state(i), 'action_mask': action_mask} for i in range(2)}
         return obs_dict
 
     def step(self, action_dict):
@@ -64,29 +58,9 @@ class Connect4Env(MultiAgentEnv):
         self.boards[1][self.game.lowest_row[column] - 1][column] = (self.game.player ^ 1) + 1
 
         action_mask = self.game.get_action_mask()
-        obs = {
-            # player: {'board': self.get_state(player), 'action_mask': action_mask},
-            # player ^ 1: {'board': self.get_state(player ^ 1), 'action_mask': action_mask},
-            0: {'board': self.get_state(0), 'action_mask': action_mask},
-            1: {'board': self.get_state(1), 'action_mask': action_mask},
-            # 0: self.get_state(0),
-            # 1: self.get_state(1),
-        }
-        rewards = {
-            player: self.game.get_reward(),
-            player ^ 1: 0.0,
-        }
+        obs = {i: {'board': self.get_state(i), 'action_mask': action_mask} for i in range(2)}
+        rewards = {player: self.game.get_reward(), player ^ 1: 0.0}
         game_over = {'__all__': self.game.is_game_over()}
-
-        # print('C4Env.step():action_dict ->', action_dict)
-        # print('C4Env.step():player ->', player)
-        # print('C4Env.step():action ->', column)
-        # print('C4Env.step():obs ->', obs)
-        # print('C4Env.step():rewards ->', rewards)
-        # print('C4Env.step():game_over ->', game_over)
-        # print('\n')
-        # if game_over['__all__']:
-        #     print('WINNER PLAYER %s' % player)
 
         return obs, rewards, game_over, {}
 
