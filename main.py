@@ -75,15 +75,14 @@ class MyVisionNetwork(Model):
 
 class JasonMaskedActionsModel(Model):
     def _build_layers_v2(self, input_dict, num_outputs, options):
-        inputs = input_dict['obs']['board']
-        inputs = tf.reshape(inputs, (-1, 42,))
+        inputs = tf.reshape(input_dict['obs']['board'], (-1, 42,))
         action_mask = input_dict['obs']['action_mask']
 
         logger.debug('\n\n######################')
         logger.debug(f'input_dict: {input_dict}')
-        logger.debug(f'options: {options}')
-        logger.debug(f'action_mask: {action_mask}')
         logger.debug(f'inputs: {inputs}')
+        logger.debug(f'action_mask: {action_mask}')
+        logger.debug(f'options: {options}')
         logger.debug('\n######################\n')
 
         hiddens = [256, 128, 64, 32]
@@ -167,8 +166,8 @@ if __name__ == '__main__':
     # ModelCatalog.register_custom_model('jason_tfv2_model', JasonTFModelV2)
 
     obs_space = spaces.Dict({
-        # 'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
-        'board': spaces.Box(low=0, high=2, shape=(6 * 7,), dtype=np.uint8),
+        # 'board': spaces.Box(low=0, high=2, shape=(6 * 7,), dtype=np.uint8),
+        'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
         'action_mask': spaces.Box(low=0, high=1, shape=(7,), dtype=np.uint8),
     })
     action_space = spaces.Discrete(7)
@@ -179,11 +178,11 @@ if __name__ == '__main__':
         stop={
             # 'timesteps_total': 1000,
             'timesteps_total': 500000,
-            'policy_reward_mean': {'learned': 0.99},
+            'policy_reward_mean': {'learned': 0.95},
         },
         config={
-            # 'env': Connect4Env,
-            'env': FlattenedConnect4Env,
+            'env': Connect4Env,
+            # 'env': FlattenedConnect4Env,
             'log_level': 'DEBUG',
             # 'gamma': 0.9,
             # 'num_workers': 4,
