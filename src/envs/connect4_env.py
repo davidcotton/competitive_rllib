@@ -25,11 +25,8 @@ class Connect4Env(MultiAgentEnv):
         board_height = self.game.board_height
         board_width = self.game.board_width
         self.action_space = spaces.Discrete(board_width)
-        # self.observation_space = spaces.Box(low=0, high=2, shape=(board_height, board_width), dtype=np.uint8)
-        # self.observation_space = spaces.Box(low=0, high=2, shape=(board_height * board_width,), dtype=np.uint8)
         self.observation_space = spaces.Dict({
-            # 'board': spaces.Box(low=0, high=2, shape=(board_height, board_width), dtype=np.uint8),
-            'board': spaces.Box(low=0, high=2, shape=(board_height * board_width,), dtype=np.uint8),
+            'board': spaces.Box(low=0, high=2, shape=(board_height, board_width), dtype=np.uint8),
             'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
         })
         # maintain a copy of each player's observations
@@ -101,8 +98,22 @@ class Connect4Env(MultiAgentEnv):
         else:
             raise ValueError('Invalid player ID %s' % player)
         state = np.flip(board, axis=0)
-        state = np.ravel(state)
         return state
+
+
+class FlattenedConnect4Env(Connect4Env):
+    def __init__(self, env_config) -> None:
+        super().__init__(env_config)
+        board_height = self.game.board_height
+        board_width = self.game.board_width
+        self.observation_space = spaces.Dict({
+            'board': spaces.Box(low=0, high=2, shape=(board_height * board_width,), dtype=np.uint8),
+            'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
+        })
+
+    def get_state(self, player=None) -> np.ndarray:
+        state = super().get_state(player)
+        return np.ravel(state)
 
 
 class Connect4:
@@ -205,7 +216,8 @@ class Connect4:
 
         :return: A numpy array where 1 if valid move else 0.
         """
-        return np.array([1 if self.lowest_row[i] < self.board_height else 0 for i in range(self.board_width)])
+        return np.array([1 if self.lowest_row[i] < self.board_height else 0 for i in range(self.board_width)],
+                        dtype=np.uint8)
 
     def is_valid_move(self, column: int) -> bool:
         """Check if column is full.
