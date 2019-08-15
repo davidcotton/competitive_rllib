@@ -11,7 +11,7 @@ from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils import try_import_tf
 
-from src.envs import Connect4Env, FlattenedConnect4Env
+from src.envs import Connect4Env, FlattenedConnect4Env, SquareConnect4Env
 from src.models.preprocessors import SquareObsPreprocessor, FlattenObsPreprocessor
 from src.policies import RandomPolicy
 
@@ -75,7 +75,8 @@ class MyVisionNetwork(Model):
 
 class JasonMaskedActionsModel(Model):
     def _build_layers_v2(self, input_dict, num_outputs, options):
-        inputs = tf.reshape(input_dict['obs']['board'], (-1, 42,))
+        inputs = input_dict['obs']['board']
+        inputs = tf.reshape(inputs, (-1, np.prod(inputs.shape[1:])))  # flatten
         action_mask = input_dict['obs']['action_mask']
 
         logger.debug('\n\n######################')
@@ -167,7 +168,8 @@ if __name__ == '__main__':
 
     obs_space = spaces.Dict({
         # 'board': spaces.Box(low=0, high=2, shape=(6 * 7,), dtype=np.uint8),
-        'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
+        # 'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
+        'board': spaces.Box(low=0, high=3, shape=(7, 7), dtype=np.uint8),
         'action_mask': spaces.Box(low=0, high=1, shape=(7,), dtype=np.uint8),
     })
     action_space = spaces.Discrete(7)
@@ -181,8 +183,8 @@ if __name__ == '__main__':
             'policy_reward_mean': {'learned': 0.95},
         },
         config={
-            'env': Connect4Env,
-            # 'env': FlattenedConnect4Env,
+            # 'env': Connect4Env,
+            'env': SquareConnect4Env,
             'log_level': 'DEBUG',
             # 'gamma': 0.9,
             # 'num_workers': 4,
