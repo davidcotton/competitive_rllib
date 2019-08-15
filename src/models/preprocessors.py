@@ -1,10 +1,12 @@
+from collections import OrderedDict
 import logging
 
 from gym import spaces
 import numpy as np
 from ray.rllib.models.preprocessors import Preprocessor, get_preprocessor
+from ray.rllib.utils.annotations import override
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('ray.rllib')
 
 
 class SquareObsPreprocessor(Preprocessor):
@@ -25,10 +27,8 @@ class SquareObsPreprocessor(Preprocessor):
 
 class FlattenObsPreprocessor(Preprocessor):
     def _init_shape(self, obs_space, options):
-        print('FlattenObsPreprocessor._init_shape().obs_space ->', obs_space)
+        logger.debug('obs_space:%s, options:%s' % (obs_space, options))
         assert isinstance(self._obs_space, spaces.Dict)
-        # new_shape = (42,)
-        # return new_shape  # can vary depending on inputs
         size = 0
         self.preprocessors = []
         for space in self._obs_space.spaces.values():
@@ -38,11 +38,28 @@ class FlattenObsPreprocessor(Preprocessor):
             size += preprocessor.size
         return size,
 
+    # def transform(self, observation):
+    #     print('FlattenObsPreprocessor.transform().observation: ->', observation)
+    #     # flat_obs = np.ravel(observation)
+    #     # return flat_obs
+    #     for k, v in observation.items():
+    #         if k == 'board':
+    #             observation[k] = np.ravel(v)
+    #     return observation
+
+    @override(Preprocessor)
     def transform(self, observation):
-        print('FlattenObsPreprocessor.transform().observation: ->', observation)
-        # flat_obs = np.ravel(observation)
-        # return flat_obs
-        for k, v in observation.items():
-            if k == 'board':
-                observation[k] = np.ravel(v)
-        return observation
+        self.check_shape(observation)
+        array = np.zeros(self.shape)
+        self.write(observation, array, 0)
+        return array
+
+    @override(Preprocessor)
+    def write(self, observation, array, offset):
+        if not isinstance(observation, OrderedDict):
+            observation = OrderedDict(sorted(list(observation.items())))
+        assert len(observation) == len(self.preprocessors), \
+            (len(observation), len(self.preprocessors))
+        for o, p in zip(observation.values(), self.preprocessors):
+            p.write(o, array, offset)
+            offset += p.size

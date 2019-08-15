@@ -1,20 +1,17 @@
-import argparse
 import logging
 
 from gym import spaces
 import numpy as np
 import ray
 from ray import tune
-from ray.rllib.agents.dqn.distributional_q_model import DistributionalQModel
 from ray.rllib.models import Model, ModelCatalog
 from ray.rllib.models.tf.misc import get_activation_fn, flatten
 from ray.rllib.models.tf.fcnet_v2 import FullyConnectedNetwork
 from ray.rllib.models.tf.tf_modelv2 import TFModelV2
 from ray.rllib.utils.annotations import override
 from ray.rllib.utils import try_import_tf
-from ray.rllib.utils.debug import summarize
 
-from src.envs import Connect4Env
+from src.envs import Connect4Env, FlattenedConnect4Env
 from src.models.preprocessors import SquareObsPreprocessor, FlattenObsPreprocessor
 from src.policies import RandomPolicy
 
@@ -76,31 +73,30 @@ class MyVisionNetwork(Model):
             return flatten(fc2), flatten(fc1)
 
 
-class JasonParametricActionsModel(Model):
+class JasonMaskedActionsModel(Model):
     def _build_layers_v2(self, input_dict, num_outputs, options):
-        print('jason pa model logger', logger)
-        print('\n\n')
-        print('_build_layers_v2().input_dict ->', input_dict)
-        print('_build_layers_v2().num_outputs ->', num_outputs)
-        print('_build_layers_v2().options ->', options)
+        inputs = input_dict['obs']['board']
+        inputs = tf.reshape(inputs, (-1, 42,))
         action_mask = input_dict['obs']['action_mask']
-        print('_build_layers_v2().action_mask ->', action_mask)
 
-        # Standard FC net component.
-        last_layer = input_dict['obs']['board']
-        # last_layer = input_dict['obs']
-        print('_build_layers_v2().last_layer ->', last_layer, '\n\n')
+        logger.debug('\n\n######################')
+        logger.debug(f'input_dict: {input_dict}')
+        logger.debug(f'options: {options}')
+        logger.debug(f'action_mask: {action_mask}')
+        logger.debug(f'inputs: {inputs}')
+        logger.debug('\n######################\n')
+
         hiddens = [256, 128, 64, 32]
         for i, size in enumerate(hiddens):
             label = 'fc{}'.format(i)
-            last_layer = tf.layers.dense(
-                last_layer,
+            inputs = tf.layers.dense(
+                inputs,
                 size,
                 # kernel_initializer=normc_initializer(1.0),
                 activation=tf.nn.relu,
                 name=label)
         output = tf.layers.dense(
-            last_layer,
+            inputs,
             num_outputs,
             # kernel_initializer=normc_initializer(0.01),
             activation=None,
@@ -117,75 +113,45 @@ class JasonParametricActionsModel(Model):
             masked_logits = tf.where(action_mask < 0.5, -tf.ones_like(output) * (2 ** 18), output)
 
         # print ('debug',masked_logits.shape, num_outputs,action_mask.shape,output.shape, '\n\n\n\n\n' )
-        return masked_logits, last_layer
-        # return action_logits, last_layer
+        return masked_logits, inputs
+        # return action_logits, inputs
 
 
 class JasonTFModelV2(TFModelV2):
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
+        super().__init__(obs_space, action_space, num_outputs, model_config, name)
+        # activation = get_activation_fn(model_config.get("fcnet_activation"))
+        # hiddens = model_config.get("fcnet_hiddens")
+        # no_final_linear = model_config.get("no_final_linear")
+        # vf_share_layers = model_config.get("vf_share_layers")
+
+        logger.debug('\n\n#######################')
+        logger.debug('obs_space:%s' % obs_space)
+        logger.debug('action_space:%s' % action_space)
+        logger.debug('model_config:%s' % model_config)
+        logger.debug('\n########################\n')
+
+        board_obs_shape = spaces.Box(low=0, high=2, shape=(6 * 7,))
+        self.model = FullyConnectedNetwork(board_obs_shape, action_space, num_outputs, model_config, name)
+        self.register_variables(self.model.variables())
+
     def forward(self, input_dict, state, seq_lens):
         logger.debug('#######################')
         logger.debug('input_dict: ' + str(input_dict))
-        logger.debug('state: ' + str(state))
+        action_mask = input_dict['obs']['action_mask']
+        obs = tf.reshape(input_dict['obs']['board'], (6 * 7,))
+        logger.debug('reshaped obs:%s' % obs)
         logger.debug('#######################')
 
-        action_mask = input_dict['obs']['action_mask']
-
-
-class ParametricActionsModel(DistributionalQModel, TFModelV2):
-    """Parametric action model that handles the dot product and masking.
-
-    This assumes the outputs are logits for a single Categorical action dist.
-    Getting this to work with a more complex output (e.g., if the action space
-    is a tuple of several distributions) is also possible but left as an
-    exercise to the reader.
-    """
-
-    def __init__(self,
-                 obs_space,
-                 action_space,
-                 num_outputs,
-                 model_config,
-                 name,
-                 true_obs_shape=(4, ),
-                 action_embed_size=2,
-                 **kw):
-        super(ParametricActionsModel, self).__init__(obs_space, action_space, num_outputs, model_config, name, **kw)
-        self.action_embed_model = FullyConnectedNetwork(
-            spaces.Box(-1, 1, shape=true_obs_shape),
-            action_space,
-            action_embed_size,
-            model_config,
-            name + "_action_embed")
-        self.register_variables(self.action_embed_model.variables())
-
-    def forward(self, input_dict, state, seq_lens):
-        # Extract the available actions tensor from the observation.
-        avail_actions = input_dict["obs"]["avail_actions"]
-        action_mask = input_dict["obs"]["action_mask"]
-
-        # Compute the predicted action embedding
-        action_embed, _ = self.action_embed_model({"obs": input_dict["obs"]["board"]})
-
-        # Expand the model output to [BATCH, 1, EMBED_SIZE]. Note that the
-        # avail actions tensor is of shape [BATCH, MAX_ACTIONS, EMBED_SIZE].
-        intent_vector = tf.expand_dims(action_embed, 1)
-
-        # Batch dot product => shape of logits is [BATCH, MAX_ACTIONS].
-        action_logits = tf.reduce_sum(avail_actions * intent_vector, axis=2)
-
-        # Mask out invalid actions (use tf.float32.min for stability)
-        inf_mask = tf.maximum(tf.log(action_mask), tf.float32.min)
-        return action_logits + inf_mask, state
+        foo = self.model({'obs': obs})
+        logger.debug('foo:' + str(foo))
+        # action_logits = tf.reduce_sum(avail_actions * intent_vector, axis=2)
 
     def value_function(self):
-        return self.action_embed_model.value_function()
+        pass
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # args = parser.parse_args()
-    use_lstm = False
-
     def select_policy(agent_id):
         if agent_id == 0:
             return 'learned'
@@ -193,19 +159,16 @@ if __name__ == '__main__':
             # return random.choice(['always_same', 'beat_last'])
             return 'random'
 
-    # ray.init()
+    ray.init()
 
     # ModelCatalog.register_custom_preprocessor('square_obs_preprocessor', SquareObsPreprocessor)
     # ModelCatalog.register_custom_preprocessor('flatten_obs_preprocessor', FlattenObsPreprocessor)
-    # ModelCatalog.register_custom_model('jason_pa_model', JasonParametricActionsModel)
+    ModelCatalog.register_custom_model('jason_masked_actions_model', JasonMaskedActionsModel)
     # ModelCatalog.register_custom_model('jason_tfv2_model', JasonTFModelV2)
-    # ModelCatalog.register_custom_model('pa_model', ParametricActionsModel)
 
-    # obs_space = spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8)
-    # obs_space = spaces.Box(low=0, high=2, shape=(6 * 7,), dtype=np.uint8)
     obs_space = spaces.Dict({
-        'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
-        # 'board': spaces.Box(low=0, high=2, shape=(6 * 7,), dtype=np.uint8),
+        # 'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
+        'board': spaces.Box(low=0, high=2, shape=(6 * 7,), dtype=np.uint8),
         'action_mask': spaces.Box(low=0, high=1, shape=(7,), dtype=np.uint8),
     })
     action_space = spaces.Discrete(7)
@@ -219,7 +182,8 @@ if __name__ == '__main__':
             'policy_reward_mean': {'learned': 0.99},
         },
         config={
-            'env': Connect4Env,
+            # 'env': Connect4Env,
+            'env': FlattenedConnect4Env,
             'log_level': 'DEBUG',
             # 'gamma': 0.9,
             # 'num_workers': 4,
@@ -239,13 +203,13 @@ if __name__ == '__main__':
                     }),
                     'learned': (None, obs_space, action_space, {
                         'model': {
-                            # 'custom_model': 'jason_pa_model',
+                            'custom_model': 'jason_masked_actions_model',
                             # 'custom_model': 'jason_tfv2_model',
                             # 'custom_model': 'pa_model',
-                            # 'use_lstm': use_lstm,
+                            # 'use_lstm': False,
                             # 'dim': 7,
                             # 'conv_filters': [[16, [4, 4], 2], [32, [4, 4], 2], [512, [11, 11], 1]],
-                            'conv_filters': [[16, [2, 2], 1], [42, [3, 3], 1], [512, [2, 2], 1]],
+                            # 'conv_filters': [[16, [2, 2], 1], [42, [3, 3], 1], [512, [2, 2], 1]],
                             # 'conv_filters': [[16, [2, 2], 1],],
                             # 'custom_preprocessor': 'square_obs_preprocessor',
                             # 'custom_preprocessor': 'flatten_obs_preprocessor',
