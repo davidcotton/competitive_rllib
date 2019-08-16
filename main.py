@@ -27,10 +27,8 @@ if __name__ == '__main__':
 
     ray.init()
 
-    # ModelCatalog.register_custom_preprocessor('square_obs_preprocessor', SquareObsPreprocessor)
     # ModelCatalog.register_custom_preprocessor('flatten_obs_preprocessor', FlattenObsPreprocessor)
-    # ModelCatalog.register_custom_model('masked_mlp_model', JasonMLPModel)
-    ModelCatalog.register_custom_model('masked_mlp_model', MaskedCNNModel)
+    ModelCatalog.register_custom_model('masked_mlp_model', MaskedMLPModel)
     ModelCatalog.register_custom_model('masked_cnn_model', MaskedCNNModel)
 
     obs_space = spaces.Dict({
@@ -46,7 +44,8 @@ if __name__ == '__main__':
         POLICY,
         stop={
             # 'timesteps_total': 1000,
-            'timesteps_total': 500000,
+            'timesteps_total': int(500e3),
+            # 'timesteps_total': int(250e3),
             'policy_reward_mean': {'learned': 0.99},
         },
         config={
@@ -54,38 +53,30 @@ if __name__ == '__main__':
             # 'env': FlattenedConnect4Env,
             'env': SquareConnect4Env,
             'log_level': 'DEBUG',
-            # 'gamma': 0.9,
-            # 'num_workers': 4,
+            'gamma': 0.9,
+            # 'gamma': tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99, 0.999, 0.9999, 1.0]),
+            # 'num_workers': 16,
+            # 'num_workers': tune.grid_search([0, 1, 2, 4, 8, 16, 20]),
             # 'num_envs_per_worker': 4,
             'num_workers': 0,
-            'num_envs_per_worker': 1,
-            'num_gpus': 1,
+            # 'num_envs_per_worker': 1,
+            # 'num_gpus': 1,
             # 'sample_batch_size': 10,
             # 'train_batch_size': 200,
             'multiagent': {
                 'policies_to_train': ['learned'],
                 'policies': {
-                    'random': (RandomPolicy, obs_space, action_space, {
-                        # 'model': {
-                        #     'custom_preprocessor': 'flatten_obs_preprocessor',
-                        # },
-                    }),
+                    'random': (RandomPolicy, obs_space, action_space, {}),
                     'learned': (None, obs_space, action_space, {
                         'model': {
-                            # 'custom_model': 'masked_mlp_model',
                             'custom_model': 'masked_mlp_model',
                             # 'custom_model': 'masked_cnn_model',
-                            # 'conv_filters': [[16, [4, 4], 2], [32, [4, 4], 2], [512, [11, 11], 1]],
-                            'conv_filters': [[7, [2, 2], 1], [49, [3, 3], 1], [512, [2, 2], 1]],
-                            # 'conv_filters': [[16, [2, 2], 1],],
+                            'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
+                            # 'conv_filters': [[7, [2, 2], 1], [49, [3, 3], 1], [512, [2, 2], 1]],
+                            'conv_activation': 'leaky_relu',
                             'fcnet_hiddens': [256, 256],
-                            # "fcnet_hiddens": [256, 128, 64, 32],
                             'fcnet_activation': 'leaky_relu',
-                            # 'fcnet_activation': 'relu',
-                            # 'fcnet_activation': 'tanh',
-                            # 'custom_preprocessor': 'square_obs_preprocessor',
                             # 'custom_preprocessor': 'flatten_obs_preprocessor',
-                            # 'custom_options': {},  # extra options to pass to your preprocessor
                             'custom_options': {
                                 'parent_policy': POLICY,
                             },
