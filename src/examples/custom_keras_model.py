@@ -24,12 +24,9 @@ parser.add_argument("--stop", type=int, default=200)
 class MyKerasModel(TFModelV2):
     """Custom model for policy gradient algorithms."""
 
-    def __init__(self, obs_space, action_space, num_outputs, model_config,
-                 name):
-        super(MyKerasModel, self).__init__(obs_space, action_space,
-                                           num_outputs, model_config, name)
-        self.inputs = tf.keras.layers.Input(
-            shape=obs_space.shape, name="observations")
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name):
+        super(MyKerasModel, self).__init__(obs_space, action_space, num_outputs, model_config, name)
+        self.inputs = tf.keras.layers.Input(shape=obs_space.shape, name="observations")
         layer_1 = tf.keras.layers.Dense(
             128,
             name="my_layer1",
@@ -59,15 +56,12 @@ class MyKerasModel(TFModelV2):
 class MyKerasQModel(DistributionalQModel):
     """Custom model for DQN."""
 
-    def __init__(self, obs_space, action_space, num_outputs, model_config,
-                 name, **kw):
-        super(MyKerasQModel, self).__init__(
-            obs_space, action_space, num_outputs, model_config, name, **kw)
+    def __init__(self, obs_space, action_space, num_outputs, model_config, name, **kwargs):
+        super(MyKerasQModel, self).__init__(obs_space, action_space, num_outputs, model_config, name, **kwargs)
 
         # Define the core model layers which will be used by the other
         # output heads of DistributionalQModel
-        self.inputs = tf.keras.layers.Input(
-            shape=obs_space.shape, name="observations")
+        self.inputs = tf.keras.layers.Input(shape=obs_space.shape, name="observations")
         layer_1 = tf.keras.layers.Dense(
             128,
             name="my_layer1",
@@ -99,7 +93,6 @@ if __name__ == "__main__":
             "env": "CartPole-v0",
             "num_gpus": 0,
             "model": {
-                "custom_model": "keras_q_model"
-                if args.run == "DQN" else "keras_model"
+                "custom_model": "keras_q_model" if args.run == "DQN" else "keras_model"
             },
         })
