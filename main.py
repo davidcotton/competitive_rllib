@@ -1,3 +1,4 @@
+import argparse
 import logging
 
 from gym import spaces
@@ -8,16 +9,19 @@ from ray.rllib.models import ModelCatalog
 from ray.rllib.utils import try_import_tf
 
 from src.envs import Connect4Env, FlattenedConnect4Env, SquareConnect4Env
-from src.models import MaskedMLPModel, MaskedCNNModel
+from src.models import MaskedMLPModel, MaskedCNNModel, ParametricActionsMLP, ParametricActionsCNN
 from src.models.preprocessors import SquareObsPreprocessor, FlattenObsPreprocessor
 from src.policies import RandomPolicy
 
 logger = logging.getLogger('ray.rllib')
 tf = try_import_tf()
-POLICY = 'PG'
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--policy", type=str, default="PG")
+    args = parser.parse_args()
+
     def select_policy(agent_id):
         if agent_id == 0:
             return 'learned'
@@ -30,6 +34,8 @@ if __name__ == '__main__':
     # ModelCatalog.register_custom_preprocessor('flatten_obs_preprocessor', FlattenObsPreprocessor)
     ModelCatalog.register_custom_model('masked_mlp_model', MaskedMLPModel)
     ModelCatalog.register_custom_model('masked_cnn_model', MaskedCNNModel)
+    ModelCatalog.register_custom_model('parametric_mlp', ParametricActionsMLP)
+    ModelCatalog.register_custom_model('parametric_cnn', ParametricActionsCNN)
 
     obs_space = spaces.Dict({
         # 'board': spaces.Box(low=0, high=2, shape=(6, 7), dtype=np.uint8),
@@ -39,16 +45,24 @@ if __name__ == '__main__':
     })
     action_space = spaces.Discrete(7)
 
+    if args.policy == 'DQN':
+        config = {
+            'hiddens': [],
+            'dueling': False,
+        }
+    else:
+        config = {}
+
     tune.run(
         # trainer,
-        POLICY,
+        args.policy,
         stop={
             # 'timesteps_total': 1000,
-            'timesteps_total': int(500e3),
-            # 'timesteps_total': int(250e3),
+            # 'timesteps_total': int(500e3),
+            'timesteps_total': int(250e3),
             'policy_reward_mean': {'learned': 0.99},
         },
-        config={
+        config=dict({
             # 'env': Connect4Env,
             # 'env': FlattenedConnect4Env,
             'env': SquareConnect4Env,
@@ -69,17 +83,17 @@ if __name__ == '__main__':
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'learned': (None, obs_space, action_space, {
                         'model': {
-                            'custom_model': 'masked_mlp_model',
+                            # 'custom_model': 'masked_mlp_model',
                             # 'custom_model': 'masked_cnn_model',
+                            'custom_model': 'parametric_mlp',
+                            # 'custom_model': 'parametric_cnn',
                             'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
                             # 'conv_filters': [[7, [2, 2], 1], [49, [3, 3], 1], [512, [2, 2], 1]],
                             'conv_activation': 'leaky_relu',
                             'fcnet_hiddens': [256, 256],
                             'fcnet_activation': 'leaky_relu',
                             # 'custom_preprocessor': 'flatten_obs_preprocessor',
-                            'custom_options': {
-                                'parent_policy': POLICY,
-                            },
+                            # 'custom_options': {},
                         }
                     }),
                 },
@@ -87,4 +101,4 @@ if __name__ == '__main__':
                 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'random'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda _: 'random'),
             },
-        })
+        }, **config))
