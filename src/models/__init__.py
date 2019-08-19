@@ -1,1 +1,1 @@
-from src.models.tf_models import MaskedMLPModel, MaskedCNNModel, ParametricActionsMLP, ParametricActionsCNN
+from src.models.tf_models import ParametricActionsMLP, ParametricActionsCNN

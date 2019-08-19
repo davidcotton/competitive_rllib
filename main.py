@@ -9,7 +9,7 @@ from ray.rllib.models import ModelCatalog
 from ray.rllib.utils import try_import_tf
 
 from src.envs import Connect4Env, FlattenedConnect4Env, SquareConnect4Env
-from src.models import MaskedMLPModel, MaskedCNNModel, ParametricActionsMLP, ParametricActionsCNN
+from src.models import ParametricActionsMLP, ParametricActionsCNN
 from src.models.preprocessors import SquareObsPreprocessor, FlattenObsPreprocessor
 from src.policies import RandomPolicy
 
@@ -31,9 +31,7 @@ if __name__ == '__main__':
 
     ray.init()
 
-    # ModelCatalog.register_custom_preprocessor('flatten_obs_preprocessor', FlattenObsPreprocessor)
-    ModelCatalog.register_custom_model('masked_mlp_model', MaskedMLPModel)
-    ModelCatalog.register_custom_model('masked_cnn_model', MaskedCNNModel)
+    ModelCatalog.register_custom_preprocessor('flatten_obs_preprocessor', FlattenObsPreprocessor)
     ModelCatalog.register_custom_model('parametric_mlp', ParametricActionsMLP)
     ModelCatalog.register_custom_model('parametric_cnn', ParametricActionsCNN)
 
@@ -83,8 +81,6 @@ if __name__ == '__main__':
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'learned': (None, obs_space, action_space, {
                         'model': {
-                            # 'custom_model': 'masked_mlp_model',
-                            # 'custom_model': 'masked_cnn_model',
                             'custom_model': 'parametric_mlp',
                             # 'custom_model': 'parametric_cnn',
                             'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
