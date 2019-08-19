@@ -96,7 +96,7 @@ class SquareConnect4Env(Connect4Env):
         board_height = self.game.board_height
         board_width = self.game.board_width
         self.observation_space = spaces.Dict({
-            'board': spaces.Box(low=0, high=2, shape=(board_height + 1, board_width), dtype=np.uint8),
+            'board': spaces.Box(low=0, high=3, shape=(board_height + 1, board_width), dtype=np.uint8),
             'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
         })
 
