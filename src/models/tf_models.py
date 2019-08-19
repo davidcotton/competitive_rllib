@@ -13,6 +13,8 @@ tf = try_import_tf()
 
 
 class ParametricActionsMLP(DistributionalQModel, TFModelV2):
+    """Tensorflow model that supports policy gradient and DQN policies."""
+
     def __init__(self, obs_space, action_space, num_outputs, model_config, name, **kwargs):
         super().__init__(obs_space, action_space, num_outputs, model_config, name, **kwargs)
 
