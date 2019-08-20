@@ -54,8 +54,8 @@ class Connect4Env(MultiAgentEnv):
         if not self.game.is_valid_move(column):
             raise ValueError('Invalid action, column %s is full' % column)
         self.game.move(column)
-        self.boards[0][self.game.lowest_row[column] - 1][column] = self.game.player + 1
-        self.boards[1][self.game.lowest_row[column] - 1][column] = (self.game.player ^ 1) + 1
+        self.boards[0][self.game.column_counts[column] - 1][column] = self.game.player + 1
+        self.boards[1][self.game.column_counts[column] - 1][column] = (self.game.player ^ 1) + 1
 
         action_mask = self.game.get_action_mask()
         obs = {i: {'board': self.get_state(i), 'action_mask': action_mask} for i in range(2)}
@@ -118,31 +118,33 @@ class Connect4:
         self.env_config['reward_lose'] = self.env_config.get('reward_lose', REWARD_LOSE)
         self.env_config['reward_step'] = self.env_config.get('reward_step', REWARD_STEP)
 
+        self.player = 1  # players: [0, 1]
         self.bitboard = [0, 0]  # bitboard for each player
-        # this is used for bitwise operations
-        self.dirs = [1, (self.board_height + 1), (self.board_height + 1) - 1, (self.board_height + 1) + 1]
-        self.heights = [(self.board_height + 1) * i for i in range(self.board_width)]  # top empty row for each column
-        self.lowest_row = [0] * self.board_width  # number of stones in each row
-        # top row of the board (this will never change)
+        # the four different win condition directions to bitshift over:
+        #   - (vertical, horizontal, diagonal-descending, diagonal-ascending)
+        self.win_conditions = [1, (self.board_height + 1), (self.board_height + 1) - 1, (self.board_height + 1) + 1]
+        # index of the bottom empty space for each column
+        self.empty_indexes = [(self.board_height + 1) * i for i in range(self.board_width)]
+        # number of discs in each column
+        self.column_counts = [0] * self.board_width
+        # to check for valid moves it is convenient to build an index of the top row of the board to compare against
         self.top_row = [(x * (self.board_height + 1)) - 1 for x in range(1, self.board_width + 1)]
-        self.player = 1
 
     def clone(self):
-        clone = Connect4()
-        clone.env_config = self.env_config
+        clone = Connect4(self.env_config)
         clone.bitboard = copy.deepcopy(self.bitboard)
-        clone.heights = copy.deepcopy(self.heights)
-        clone.lowest_row = copy.deepcopy(self.lowest_row)
+        clone.empty_indexes = copy.deepcopy(self.empty_indexes)
+        clone.column_counts = copy.deepcopy(self.column_counts)
         clone.top_row = copy.deepcopy(self.top_row)
         clone.player = self.player
         return clone
 
     def move(self, column: int) -> None:
-        m2 = 1 << self.heights[column]  # position entry on bit-board
-        self.heights[column] += 1  # update top empty row for column
+        m2 = 1 << self.empty_indexes[column]  # position entry on bit-board
+        self.empty_indexes[column] += 1  # update top empty row for column
         self.player ^= 1
         self.bitboard[self.player] ^= m2  # XOR operation to insert stone in player's bit-board
-        self.lowest_row[column] += 1  # update number of stones in column
+        self.column_counts[column] += 1  # update number of stones in column
 
     def get_reward(self, player=None) -> float:
         if player is None:
@@ -166,10 +168,10 @@ class Connect4:
         if player is None:
             player = self.player
 
-        for d in self.dirs:
+        for direction in self.win_conditions:
             bb = self.bitboard[player]
             for i in range(1, self.win_length):
-                bb &= self.bitboard[player] >> (i * d)
+                bb &= self.bitboard[player] >> (i * direction)
             if bb != 0:
                 return True
         return False
@@ -198,7 +200,7 @@ class Connect4:
 
         list_moves = []
         for i in range(self.board_width):
-            if self.lowest_row[i] < self.board_height:
+            if self.column_counts[i] < self.board_height:
                 list_moves.append(i)
         return list_moves
 
@@ -207,7 +209,7 @@ class Connect4:
 
         :return: A numpy array where 1 if valid move else 0.
         """
-        return np.array([1 if self.lowest_row[i] < self.board_height else 0 for i in range(self.board_width)],
+        return np.array([1 if self.column_counts[i] < self.board_height else 0 for i in range(self.board_width)],
                         dtype=np.uint8)
 
     def is_valid_move(self, column: int) -> bool:
@@ -216,7 +218,7 @@ class Connect4:
         :param column: The column to check
         :return: True if it is a valid move, else False.
         """
-        return self.heights[column] != self.top_row[column]
+        return self.empty_indexes[column] != self.top_row[column]
 
     @property
     def board_height(self) -> int:
