@@ -117,7 +117,8 @@ class Connect4:
         self.env_config['reward_draw'] = self.env_config.get('reward_draw', REWARD_DRAW)
         self.env_config['reward_lose'] = self.env_config.get('reward_lose', REWARD_LOSE)
         self.env_config['reward_step'] = self.env_config.get('reward_step', REWARD_STEP)
-        self.bit_board = [0, 0]  # bit-board for each player
+
+        self.bitboard = [0, 0]  # bitboard for each player
         # this is used for bitwise operations
         self.dirs = [1, (self.board_height + 1), (self.board_height + 1) - 1, (self.board_height + 1) + 1]
         self.heights = [(self.board_height + 1) * i for i in range(self.board_width)]  # top empty row for each column
@@ -129,7 +130,7 @@ class Connect4:
     def clone(self):
         clone = Connect4()
         clone.env_config = self.env_config
-        clone.bit_board = copy.deepcopy(self.bit_board)
+        clone.bitboard = copy.deepcopy(self.bitboard)
         clone.heights = copy.deepcopy(self.heights)
         clone.lowest_row = copy.deepcopy(self.lowest_row)
         clone.top_row = copy.deepcopy(self.top_row)
@@ -140,7 +141,7 @@ class Connect4:
         m2 = 1 << self.heights[column]  # position entry on bit-board
         self.heights[column] += 1  # update top empty row for column
         self.player ^= 1
-        self.bit_board[self.player] ^= m2  # XOR operation to insert stone in player's bit-board
+        self.bitboard[self.player] ^= m2  # XOR operation to insert stone in player's bit-board
         self.lowest_row[column] += 1  # update number of stones in column
 
     def get_reward(self, player=None) -> float:
@@ -166,9 +167,9 @@ class Connect4:
             player = self.player
 
         for d in self.dirs:
-            bb = self.bit_board[player]
+            bb = self.bitboard[player]
             for i in range(1, self.win_length):
-                bb &= self.bit_board[player] >> (i * d)
+                bb &= self.bitboard[player] >> (i * d)
             if bb != 0:
                 return True
         return False
