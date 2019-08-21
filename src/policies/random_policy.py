@@ -8,10 +8,10 @@ logger = logging.getLogger('ray.rllib')
 
 
 class RandomPolicy(Policy):
-    """Pick a random move and stick with it for the entire episode."""
+    """Pick actions uniformly random from available actions each turn."""
 
     def __init__(self, observation_space, action_space, config):
-        Policy.__init__(self, observation_space, action_space, config)
+        super().__init__(observation_space, action_space, config)
 
     def compute_actions(self,
                         obs_batch,
@@ -40,15 +40,15 @@ class RandomPolicy(Policy):
             info (dict): dictionary of extra feature batches, if any, with shape like
                 {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
         """
-        actions = []
-        # logger.debug('obs_batch: ' + str(obs_batch))
-        for obs in obs_batch:
-            action_mask, board = obs[:7], obs[7:]  # DictPreprocessor concats the obs dict parts together
-            valid_actions = [i for i in range(7) if action_mask[i]]
-            actions.append(random.choice(valid_actions))
-        actions = np.array(actions)
 
-        return actions, state_batches, {}
+        num_actions = self.action_space.n
+        actions = []
+        for obs in obs_batch:
+            action_mask = obs[:num_actions]  # DictPreprocessor concats the obs dict parts together
+            valid_actions = [i for i in range(num_actions) if action_mask[i]]
+            actions.append(random.choice(valid_actions))
+
+        return np.array(actions), state_batches, {}
 
     def learn_on_batch(self, samples):
         pass
