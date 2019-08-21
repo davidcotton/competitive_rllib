@@ -107,7 +107,7 @@ class SquareConnect4Env(Connect4Env):
 
 
 class Connect4:
-    def __init__(self, env_config=None) -> None:
+    def __init__(self, env_config=None, game_state=None) -> None:
         super().__init__()
         self.env_config = env_config or {}
         self.env_config['board_height'] = self.env_config.get('board_height', BOARD_HEIGHT)
@@ -130,6 +130,31 @@ class Connect4:
         # to check for valid moves it is convenient to build an index of the top row of the board to compare against
         self.top_row = [(x * (self.board_height + 1)) - 1 for x in range(1, self.board_width + 1)]
 
+        if game_state is not None:
+            self.player = game_state['player']
+            board = np.flip(game_state['board'].reshape(7, 7), axis=0).astype(np.uint8)
+            board = board[1:]
+            # print(f'\n\nBOARD TO COPY\n{board}')
+            for y, row in enumerate(board):
+                # print(f'y: {y}, row: {row}')
+                num_updated = 0
+                for column, value in enumerate(row):
+                    # print(f'column: {column}, value: {value}')
+                    if value in {1, 2}:
+                        player = value - 1
+                        m2 = 1 << self.empty_indexes[column]  # position entry on bitboard
+                        # print(f'm2: {m2}')
+                        self.empty_indexes[column] += 1  # update top empty row for column
+                        # print(f'bitboard[{player}]: {self.bitboard[player]}')
+                        self.bitboard[player] ^= m2  # XOR operation to insert token in player's bitboard
+                        self.column_counts[column] += 1  # update number of tokens in column
+                        num_updated += 1
+                if num_updated == 0:
+                    break
+            # print(f'bitboard {self.bitboard}')
+            # print(f'empty_indexes {self.empty_indexes}')
+            # print(f'column_counts {self.column_counts}')
+
     def clone(self):
         clone = Connect4(self.env_config)
         clone.bitboard = copy.deepcopy(self.bitboard)
@@ -140,11 +165,11 @@ class Connect4:
         return clone
 
     def move(self, column: int) -> None:
-        m2 = 1 << self.empty_indexes[column]  # position entry on bit-board
+        m2 = 1 << self.empty_indexes[column]  # position entry on bitboard
         self.empty_indexes[column] += 1  # update top empty row for column
         self.player ^= 1
-        self.bitboard[self.player] ^= m2  # XOR operation to insert stone in player's bit-board
-        self.column_counts[column] += 1  # update number of stones in column
+        self.bitboard[self.player] ^= m2  # XOR operation to insert token in player's bitboard
+        self.column_counts[column] += 1  # update number of tokens in column
 
     def get_reward(self, player=None) -> float:
         if player is None:
