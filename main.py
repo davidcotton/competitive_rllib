@@ -92,9 +92,18 @@ if __name__ == '__main__':
                             # 'custom_options': {},
                         }
                     }),
+                    'learned2': (None, obs_space, action_space, {
+                        'model': {
+                            'custom_model': 'parametric_mlp',
+                            'conv_activation': 'leaky_relu',
+                            'fcnet_hiddens': [256, 256],
+                            'fcnet_activation': 'leaky_relu',
+                        }
+                    }),
                 },
                 # 'policy_mapping_fn': tune.function(select_policy),
                 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'random'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'learned2'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda _: 'random'),
             },
         }, **config))
