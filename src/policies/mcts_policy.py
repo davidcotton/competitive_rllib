@@ -75,7 +75,7 @@ class MCTSPolicy(Policy):
 
 
 class MCTSTree:
-    def run(self, current_state: Connect4, max_rollouts, current_node=None, timeout=100):
+    def run(self, current_state: Connect4, max_rollouts, current_node=None, rollouts_timeout=100):
         root: Node = Node(state=current_state)
         if current_node is not None:
             root = current_node
@@ -107,7 +107,7 @@ class MCTSTree:
                 node = node.parent
 
             duration = time.clock() - start
-            if duration > timeout:
+            if duration > rollouts_timeout:
                 break
 
         def score(x):
