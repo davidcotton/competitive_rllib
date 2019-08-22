@@ -57,9 +57,7 @@ class MCTSPolicy(Policy):
         for obs in obs_batch:
             board = obs[7:]  # DictPreprocessor concats the obs dict parts together
             game = Connect4(game_state={'board': board, 'player': 1})
-            node = Node(state=game)
-
-            action, metrics = MCTSTree().run(game, self.max_rollouts, node, self.rollouts_timeout)
+            action, metrics = mcts(game, self.max_rollouts, self.rollouts_timeout)
             actions.append(action)
 
         return np.array(actions), state_batches, {}
@@ -74,49 +72,45 @@ class MCTSPolicy(Policy):
         pass
 
 
-class MCTSTree:
-    def run(self, current_state: Connect4, max_rollouts, current_node=None, rollouts_timeout=100):
-        root: Node = Node(state=current_state)
-        if current_node is not None:
-            root = current_node
+def mcts(current_state: Connect4, max_rollouts=10000, rollouts_timeout=100):
+    root = Node(state=current_state)
+    start = time.clock()
+    for i in range(max_rollouts):
+        node = root
+        state = current_state.clone()
 
-        start = time.clock()
-        for i in range(max_rollouts):
-            node = root
-            state = current_state.clone()
+        # selection
+        # keep going down the tree based on best UCT values until terminal or unexpanded node
+        while len(node.untried_moves) == 0 and len(node.children):
+            node = node.selection()
+            state.move(node.move)
 
-            # selection
-            # keep going down the tree based on best UCT values until terminal or unexpanded node
-            while len(node.untried_moves) == 0 and len(node.children):
-                node = node.selection()
-                state.move(node.move)
+        # expand
+        if node.untried_moves:
+            move = random.choice(node.untried_moves)
+            state.move(move)
+            node = node.expand(move, state)
 
-            # expand
-            if node.untried_moves:
-                move = random.choice(node.untried_moves)
-                state.move(move)
-                node = node.expand(move, state)
+        # rollout
+        while state.get_moves():
+            state.move(random.choice(state.get_moves()))
 
-            # rollout
-            while state.get_moves():
-                state.move(random.choice(state.get_moves()))
+        # backpropagate
+        while node is not None:
+            node.update(state.get_reward(node.player))
+            node = node.parent
 
-            # backpropagate
-            while node is not None:
-                node.update(state.get_reward(node.player))
-                node = node.parent
+        duration = time.clock() - start
+        if duration > rollouts_timeout:
+            break
 
-            duration = time.clock() - start
-            if duration > rollouts_timeout:
-                break
+    def score(x):
+        return x.wins / x.visits
 
-        def score(x):
-            return x.wins / x.visits
+    sorted_children = sorted(root.children, key=score)[::-1]
+    metrics = {'num_rollouts': i}
 
-        sorted_children = sorted(root.children, key=score)[::-1]
-        metrics = {'num_rollouts': i}
-
-        return sorted_children[0].move, metrics
+    return sorted_children[0].move, metrics
 
 
 class Node:
