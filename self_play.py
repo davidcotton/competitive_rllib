@@ -81,7 +81,9 @@ if __name__ == '__main__':
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'mcts': (MCTSPolicy, obs_space, action_space, {
                         'max_rollouts': 1000,
-                        'rollouts_timeout': 0.1,
+                        'rollouts_timeout': 0.001,
+                        # 'rollouts_timeout': 0.01,
+                        # 'rollouts_timeout': 0.1,
                     }),
                 },
             },
