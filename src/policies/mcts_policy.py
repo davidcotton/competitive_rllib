@@ -22,15 +22,9 @@ class MCTSPolicy(Policy):
         logger.debug('config:%s' % config)
         logger.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n\n')
 
-        # print('\n\n\n ^^^^^^^^ MCTSPolicy Config ^^^^^&')
-        # from pprint import pprint
-        # pprint(config)
-        # print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^6\n\n\n')
-
         mcts_config = config['multiagent']['policies']['mcts'][3]
         self.max_rollouts = mcts_config['max_rollouts']
         self.rollouts_timeout = mcts_config['rollouts_timeout']
-        self.die = 0
 
     def compute_actions(self,
                         obs_batch,
@@ -59,10 +53,6 @@ class MCTSPolicy(Policy):
             info (dict): dictionary of extra feature batches, if any, with shape like
                 {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
         """
-
-        # logger.debug('obs_batch:%s' % obs_batch)
-        # logger.debug('episodes:%s' % episodes)
-
         actions = []
         for obs in obs_batch:
             action_mask, board = obs[:7], obs[7:]  # DictPreprocessor concats the obs dict parts together
@@ -71,10 +61,6 @@ class MCTSPolicy(Policy):
 
             action, metrics = MCTSTree().run(game, self.max_rollouts, node, self.rollouts_timeout)
             actions.append(action)
-
-        # if self.die == 10:
-        #     foo = 1 / 0
-        # self.die += 1
 
         return np.array(actions), state_batches, {}
 
