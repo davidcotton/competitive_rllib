@@ -132,28 +132,19 @@ class Connect4:
 
         if game_state is not None:
             self.player = game_state['player']
-            board = np.flip(game_state['board'].reshape(7, 7), axis=0).astype(np.uint8)
-            board = board[1:]
-            # print(f'\n\nBOARD TO COPY\n{board}')
+            board = np.flip(game_state['board'].reshape(7, 7), axis=0).astype(np.uint8)[1:]
             for y, row in enumerate(board):
-                # print(f'y: {y}, row: {row}')
                 num_updated = 0
                 for column, value in enumerate(row):
-                    # print(f'column: {column}, value: {value}')
                     if value in {1, 2}:
                         player = value - 1
-                        m2 = 1 << self.empty_indexes[column]  # position entry on bitboard
-                        # print(f'm2: {m2}')
-                        self.empty_indexes[column] += 1  # update top empty row for column
-                        # print(f'bitboard[{player}]: {self.bitboard[player]}')
-                        self.bitboard[player] ^= m2  # XOR operation to insert token in player's bitboard
-                        self.column_counts[column] += 1  # update number of tokens in column
+                        m2 = 1 << self.empty_indexes[column]
+                        self.empty_indexes[column] += 1
+                        self.bitboard[player] ^= m2
+                        self.column_counts[column] += 1
                         num_updated += 1
                 if num_updated == 0:
                     break
-            # print(f'bitboard {self.bitboard}')
-            # print(f'empty_indexes {self.empty_indexes}')
-            # print(f'column_counts {self.column_counts}')
 
     def clone(self):
         clone = Connect4(self.env_config)
