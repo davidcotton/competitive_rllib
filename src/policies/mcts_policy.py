@@ -55,7 +55,7 @@ class MCTSPolicy(Policy):
         """
         actions = []
         for obs in obs_batch:
-            action_mask, board = obs[:7], obs[7:]  # DictPreprocessor concats the obs dict parts together
+            board = obs[7:]  # DictPreprocessor concats the obs dict parts together
             game = Connect4(game_state={'board': board, 'player': 1})
             node = Node(state=game)
 
