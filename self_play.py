@@ -90,8 +90,8 @@ if __name__ == '__main__':
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'mcts': (MCTSPolicy, obs_space, action_space, {
                         'max_rollouts': 10000,
-                        'rollouts_timeout': 0.001,  # ~ 2 rollouts/action
-                        # 'rollouts_timeout': 0.01,  # ~20 rollouts/action
+                        # 'rollouts_timeout': 0.001,  # ~ 2 rollouts/action
+                        'rollouts_timeout': 0.01,  # ~20 rollouts/action
                         # 'rollouts_timeout': 0.1,  # ~200 rollouts/action
                         # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
@@ -103,5 +103,7 @@ if __name__ == '__main__':
             },
         }, **config),
         # checkpoint_freq=10,
-        # checkpoint_at_end=True,
+        checkpoint_at_end=True,
+        restore='/home/dave/ray_results/PPO/PPO_SquareConnect4Env_0_2019-08-23_12-05-40vjmp7z4s/checkpoint_267/checkpoint-267',
+        # resume=True
     )
