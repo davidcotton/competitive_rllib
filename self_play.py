@@ -21,7 +21,7 @@ def on_episode_end(info):
         episode = info['episode']
         mcts_policy = info['policy']['mcts']
         episode.custom_metrics['num_rollouts'] = np.mean(mcts_policy.metrics['num_rollouts'])
-        mcts_policy.info['num_rollouts'].clear()
+        mcts_policy.metrics['num_rollouts'].clear()
 
 
 if __name__ == '__main__':
@@ -90,9 +90,11 @@ if __name__ == '__main__':
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'mcts': (MCTSPolicy, obs_space, action_space, {
                         'max_rollouts': 10000,
-                        'rollouts_timeout': 0.001,
-                        # 'rollouts_timeout': 0.01,
-                        # 'rollouts_timeout': 0.1,
+                        'rollouts_timeout': 0.001,  # ~ 2 rollouts/action
+                        # 'rollouts_timeout': 0.01,  # ~20 rollouts/action
+                        # 'rollouts_timeout': 0.1,  # ~200 rollouts/action
+                        # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
+                        # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                     }),
                 },
             },
