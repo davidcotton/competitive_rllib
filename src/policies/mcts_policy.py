@@ -15,16 +15,10 @@ class MCTSPolicy(Policy):
 
     def __init__(self, observation_space, action_space, config):
         super().__init__(observation_space, action_space, config)
-
-        logger.debug('\n\n\n ^^^^^^^^^^ MCTSPolicy ^^^^^^^^^^^^^^^')
-        logger.debug('observation_space:%s' % observation_space)
-        logger.debug('action_space:%s' % action_space)
-        logger.debug('config:%s' % config)
-        logger.debug('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n\n')
-
         mcts_config = config['multiagent']['policies']['mcts'][3]
         self.max_rollouts = mcts_config['max_rollouts']
         self.rollouts_timeout = mcts_config['rollouts_timeout']
+        self.metrics = {'num_rollouts': []}
 
     def compute_actions(self,
                         obs_batch,
@@ -53,12 +47,14 @@ class MCTSPolicy(Policy):
             info (dict): dictionary of extra feature batches, if any, with shape like
                 {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
         """
+
         actions = []
         for obs in obs_batch:
             board = obs[7:]  # DictPreprocessor concats the obs dict parts together
             game = Connect4(game_state={'board': board, 'player': 1})
             action, metrics = mcts(game, self.max_rollouts, self.rollouts_timeout)
             actions.append(action)
+            self.metrics['num_rollouts'].append(metrics['num_rollouts'])
 
         return np.array(actions), state_batches, {}
 

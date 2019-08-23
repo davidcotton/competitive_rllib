@@ -15,6 +15,15 @@ logger = logging.getLogger('ray.rllib')
 tf = try_import_tf()
 
 
+def on_episode_end(info):
+    """Add custom metrics to track MCTS rollouts"""
+    if 'mcts' in info['policy']:
+        episode = info['episode']
+        mcts_policy = info['policy']['mcts']
+        episode.custom_metrics['num_rollouts'] = np.mean(mcts_policy.metrics['num_rollouts'])
+        mcts_policy.info['num_rollouts'].clear()
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=str, default="PG")
@@ -86,6 +95,9 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 0.1,
                     }),
                 },
+            },
+            'callbacks': {
+                'on_episode_end': tune.function(on_episode_end),
             },
         }, **config),
         # checkpoint_freq=10,
