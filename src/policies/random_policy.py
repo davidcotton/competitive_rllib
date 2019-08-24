@@ -10,9 +10,6 @@ logger = logging.getLogger('ray.rllib')
 class RandomPolicy(Policy):
     """Pick actions uniformly random from available actions each turn."""
 
-    def __init__(self, observation_space, action_space, config):
-        super().__init__(observation_space, action_space, config)
-
     def compute_actions(self,
                         obs_batch,
                         state_batches,
