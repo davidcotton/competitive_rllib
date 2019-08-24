@@ -9,7 +9,7 @@ from ray.rllib.utils import try_import_tf
 
 from src.envs import Connect4Env, FlattenedConnect4Env, SquareConnect4Env
 from src.models import ParametricActionsMLP, ParametricActionsCNN
-from src.policies import MCTSPolicy, RandomPolicy
+from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 
 logger = logging.getLogger('ray.rllib')
 tf = try_import_tf()
@@ -53,6 +53,7 @@ if __name__ == '__main__':
             # 'timesteps_total': int(500e3),
             # 'timesteps_total': int(10e6),
             'policy_reward_mean': {'learned': 0.80},
+            # 'policy_reward_mean': {'learned': 0.50},
         },
         config=dict({
             # 'env': Connect4Env,
@@ -60,15 +61,17 @@ if __name__ == '__main__':
             'env': SquareConnect4Env,
             'log_level': 'DEBUG',
             'gamma': 0.9,
-            # 'num_workers': 0,
-            'num_workers': 20,
+            'num_workers': 0,
+            # 'num_workers': 20,
             # 'num_gpus': 1,
             'multiagent': {
                 # 'policies_to_train': ['learned', 'learned2'],
                 'policies_to_train': ['learned'],
                 # 'policy_mapping_fn': tune.function(select_policy),
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'random'][agent_id % 2]),
-                'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'mcts'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'mcts'][agent_id % 2]),
+                'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'human'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['mcts', 'human'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'learned2'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'learned'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda _: 'random'),
@@ -96,6 +99,7 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                     }),
+                    'human': (HumanPolicy, obs_space, action_space, {}),
                 },
             },
             'callbacks': {
@@ -104,6 +108,6 @@ if __name__ == '__main__':
         }, **config),
         # checkpoint_freq=10,
         checkpoint_at_end=True,
-        restore='/home/dave/ray_results/PPO/PPO_SquareConnect4Env_0_2019-08-23_12-05-40vjmp7z4s/checkpoint_267/checkpoint-267',
+        restore='/home/dave/ray_results/PPO/PPO_SquareConnect4Env_0_2019-08-25_08-34-579oxf4ods/checkpoint_119/checkpoint-119',
         # resume=True
     )
