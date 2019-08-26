@@ -15,9 +15,12 @@ class MCTSPolicy(Policy):
 
     def __init__(self, observation_space, action_space, config):
         super().__init__(observation_space, action_space, config)
-        mcts_config = config['multiagent']['policies']['mcts'][3]
-        self.max_rollouts = mcts_config['max_rollouts']
-        self.rollouts_timeout = mcts_config['rollouts_timeout']
+        mcts_config = config['multiagent']['policies']['mcts']
+        obs_space = mcts_config[1]
+        self.board_size = np.prod(obs_space['board'].shape)
+        self.player = mcts_config[3]['player_id']
+        self.max_rollouts = mcts_config[3]['max_rollouts']
+        self.rollouts_timeout = mcts_config[3]['rollouts_timeout']
         self.metrics = {'num_rollouts': []}
 
     def compute_actions(self,
@@ -49,12 +52,17 @@ class MCTSPolicy(Policy):
         """
 
         actions = []
+        board_start = self.action_space.n
+        board_end = self.action_space.n + self.board_size
         for obs in obs_batch:
-            board = obs[7:]  # DictPreprocessor concats the obs dict parts together
-            game = Connect4(game_state={'board': board, 'player': 1})
-            action, metrics = mcts(game, self.max_rollouts, self.rollouts_timeout)
-            actions.append(action)
-            self.metrics['num_rollouts'].append(metrics['num_rollouts'])
+            action_mask, board, player = obs[:board_start], obs[board_start:board_end], obs[board_end:].item()
+            if player == self.player:
+                game = Connect4(game_state={'board': board, 'player': 1})
+                action, metrics = mcts(game, self.max_rollouts, self.rollouts_timeout)
+                actions.append(action)
+                self.metrics['num_rollouts'].append(metrics['num_rollouts'])
+            else:
+                actions.append(0)  # dummy action as not our turn
 
         return np.array(actions), state_batches, {}
 

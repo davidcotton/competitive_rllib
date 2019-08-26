@@ -1,4 +1,5 @@
 import logging
+import random
 
 import numpy as np
 from ray.rllib.policy.policy import Policy
@@ -11,6 +12,10 @@ class HumanPolicy(Policy):
 
     def __init__(self, observation_space, action_space, config):
         super().__init__(observation_space, action_space, config)
+        obs_space = config['multiagent']['policies']['human'][1]
+        self.board_shape = obs_space['board'].shape
+        self.board_size = np.prod(self.board_shape)
+        self.player = 1
 
     def compute_actions(self,
                         obs_batch,
@@ -40,29 +45,35 @@ class HumanPolicy(Policy):
                 {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
         """
 
-        assert len(obs_batch) == 1
-        num_actions = self.action_space.n
+        assert len(obs_batch) == 1  # too hard for human to play parallel games
         obs = obs_batch[0]
-        action_mask, obs = obs[:num_actions], obs[num_actions:49]
-        obs = obs.reshape((6, 7)).astype(np.uint8)
+        num_actions = self.action_space.n
+        board_start = self.action_space.n
+        board_end = self.action_space.n + self.board_size
+        action_mask, obs, player = obs[:board_start], obs[board_start:board_end], int(obs[board_end:])
+        obs = obs.reshape(self.board_shape).astype(np.uint8)
+        self._render_board(obs)
 
+        valid_actions = [i for i in range(num_actions) if action_mask[i]]
+        if player == self.player:
+            action = None
+            while action not in list(valid_actions):
+                try:
+                    action = int(input('What is your action?')) - 1
+                except ValueError:
+                    pass
+        else:
+            action = 0  # dummy action as not our turn
+
+        return np.array([action]), state_batches, {}
+
+    def _render_board(self, obs):
         print('  1 2 3 4 5 6 7')
         print(' ---------------')
         print(obs)
         print(' ---------------')
         print('  1 2 3 4 5 6 7')
         print()
-
-        action_mask = obs_batch[0][:num_actions]
-        valid_actions = [i for i in range(num_actions) if action_mask[i]]
-        action = None
-        while action not in list(valid_actions):
-            try:
-                action = int(input('What is your action?')) - 1
-            except ValueError:
-                pass
-
-        return np.array([action]), state_batches, {}
 
     def learn_on_batch(self, samples):
         pass

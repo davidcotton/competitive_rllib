@@ -28,6 +28,7 @@ class Connect4Env(MultiAgentEnv):
         self.observation_space = spaces.Dict({
             'board': spaces.Box(low=0, high=2, shape=(board_height, board_width), dtype=np.uint8),
             'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
+            'player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
         # maintain a copy of each player's observations
         # each board is player invariant, has the player as `1` and the opponent as `2`
@@ -37,7 +38,13 @@ class Connect4Env(MultiAgentEnv):
         self.game = Connect4(self.game.env_config)
         self.boards = [np.zeros((self.game.board_height, self.game.board_width), dtype=np.uint8) for _ in range(2)]
         action_mask = self.game.get_action_mask()
-        obs_dict = {i: {'board': self.get_state(i), 'action_mask': action_mask} for i in range(2)}
+        obs_dict = {
+            i: {
+                'board': self.get_state(i),
+                'action_mask': action_mask,
+                'player': np.array([0])  # player0 is always first
+            } for i in range(2)
+        }
         return obs_dict
 
     def step(self, action_dict):
@@ -50,6 +57,7 @@ class Connect4Env(MultiAgentEnv):
         """
 
         player = self.game.player ^ 1  # game.player is incremented in game.move(), so use flipped value internally
+        next_player = self.game.player
         column = action_dict[player]
         if not self.game.is_valid_move(column):
             raise ValueError('Invalid action, column %s is full' % column)
@@ -58,8 +66,14 @@ class Connect4Env(MultiAgentEnv):
         self.boards[1][self.game.column_counts[column] - 1][column] = (self.game.player ^ 1) + 1
 
         action_mask = self.game.get_action_mask()
-        obs = {i: {'board': self.get_state(i), 'action_mask': action_mask} for i in range(2)}
-        rewards = {player: self.game.get_reward(), player ^ 1: 0.0}
+        obs = {
+            i: {
+                'board': self.get_state(i),
+                'action_mask': action_mask,
+                'player': np.array([next_player])
+            } for i in range(2)
+        }
+        rewards = {player: self.game.get_reward(), next_player: 0.0}
         game_over = {'__all__': self.game.is_game_over()}
 
         return obs, rewards, game_over, {}
@@ -83,6 +97,7 @@ class FlattenedConnect4Env(Connect4Env):
         self.observation_space = spaces.Dict({
             'board': spaces.Box(low=0, high=2, shape=(board_height * board_width,), dtype=np.uint8),
             'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
+            'player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
 
     def get_state(self, player=None) -> np.ndarray:
@@ -98,6 +113,7 @@ class SquareConnect4Env(Connect4Env):
         self.observation_space = spaces.Dict({
             'board': spaces.Box(low=0, high=3, shape=(board_height + 1, board_width), dtype=np.uint8),
             'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
+            'player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
 
     def get_state(self, player=None) -> np.ndarray:
