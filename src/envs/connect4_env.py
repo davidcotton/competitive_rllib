@@ -19,7 +19,7 @@ REWARD_STEP = 0.0
 class Connect4Env(MultiAgentEnv):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, env_config) -> None:
+    def __init__(self, env_config=None) -> None:
         super().__init__()
         self.game = Connect4(env_config)
         board_height = self.game.board_height
@@ -90,7 +90,7 @@ class Connect4Env(MultiAgentEnv):
 
 
 class FlattenedConnect4Env(Connect4Env):
-    def __init__(self, env_config) -> None:
+    def __init__(self, env_config=None) -> None:
         super().__init__(env_config)
         board_height = self.game.board_height
         board_width = self.game.board_width
@@ -106,7 +106,7 @@ class FlattenedConnect4Env(Connect4Env):
 
 
 class SquareConnect4Env(Connect4Env):
-    def __init__(self, env_config) -> None:
+    def __init__(self, env_config=None) -> None:
         super().__init__(env_config)
         board_height = self.game.board_height
         board_width = self.game.board_width
@@ -146,10 +146,9 @@ class Connect4:
         # to check for valid moves it is convenient to build an index of the top row of the board to compare against
         self.top_row = [(x * (self.board_height + 1)) - 1 for x in range(1, self.board_width + 1)]
 
-        if game_state is not None:
+        if game_state is not None:  # reconstitute from game state
             self.player = game_state['player']
-            board = np.flip(game_state['board'].reshape(7, 7), axis=0).astype(np.uint8)[1:]
-            for y, row in enumerate(board):
+            for y, row in enumerate(game_state['board']):
                 num_updated = 0
                 for column, value in enumerate(row):
                     if value in {1, 2}:

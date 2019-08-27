@@ -17,6 +17,7 @@ class MCTSPolicy(Policy):
         super().__init__(observation_space, action_space, config)
         mcts_config = config['multiagent']['policies']['mcts']
         obs_space = mcts_config[1]
+        self.board_shape = obs_space['board'].shape
         self.board_size = np.prod(obs_space['board'].shape)
         self.player = mcts_config[3]['player_id']
         self.max_rollouts = mcts_config[3]['max_rollouts']
@@ -57,6 +58,9 @@ class MCTSPolicy(Policy):
         for obs in obs_batch:
             action_mask, board, player = obs[:board_start], obs[board_start:board_end], obs[board_end:].item()
             if player == self.player:
+                board = np.flip(board.reshape(self.board_shape), axis=0).astype(np.uint8)
+                if self.board_shape == (7, 7):  # if square obs, cut off the filler `3`s at the top
+                    board = board[1:]
                 game = Connect4(game_state={'board': board, 'player': 1})
                 action, metrics = mcts(game, self.max_rollouts, self.rollouts_timeout)
                 actions.append(action)
