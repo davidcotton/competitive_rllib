@@ -66,6 +66,7 @@ if __name__ == '__main__':
 
     tune.run(
         args.policy,
+        name='selfplay',
         stop={
             # 'timesteps_total': int(50e3),
             # 'timesteps_total': int(500e3),
@@ -78,6 +79,7 @@ if __name__ == '__main__':
         },
         config=dict({
             'env': 'c4',
+            'env_config': {},
             'gamma': 0.9,
             # 'num_workers': 0,
             'num_workers': 20,
@@ -113,6 +115,12 @@ if __name__ == '__main__':
             'callbacks': {
                 'on_episode_end': tune.function(on_episode_end),
             },
+            # 'evaluation_interval': 100,
+            # 'evaluation_num_episodes': 10,
+            # 'evaluation_config': {
+            #     'entropy_coeff': 0.0,  # just copy in defaults to trick Trainer._evaluate()
+            #     'entropy_coeff_schedule': None,
+            # },
         }, **tune_config),
         # checkpoint_freq=100,
         # checkpoint_at_end=True,
