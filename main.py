@@ -61,6 +61,7 @@ if __name__ == '__main__':
 
     tune.run(
         args.policy,
+        name='main',
         stop={
             # 'timesteps_total': int(500e3),
             'timesteps_total': int(250e3),

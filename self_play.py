@@ -1,25 +1,16 @@
 import argparse
 import logging
 
-import numpy as np
 from ray import tune
 from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 
+from src.callbacks import on_episode_end
 from src.envs import Connect4Env, SquareConnect4Env
 from src.models import ParametricActionsMLP, ParametricActionsCNN
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 
 logger = logging.getLogger('ray.rllib')
-
-
-def on_episode_end(info):
-    """Add custom metrics to track MCTS rollouts"""
-    if 'mcts' in info['policy']:
-        episode = info['episode']
-        mcts_policy = info['policy']['mcts']
-        episode.custom_metrics['num_rollouts'] = np.mean(mcts_policy.metrics['num_rollouts'])
-        mcts_policy.metrics['num_rollouts'].clear()
 
 
 if __name__ == '__main__':
@@ -81,8 +72,8 @@ if __name__ == '__main__':
             'env': 'c4',
             'env_config': {},
             'gamma': 0.9,
-            # 'num_workers': 0,
-            'num_workers': 20,
+            'num_workers': 0,
+            # 'num_workers': 20,
             # 'num_gpus': 1,
             'multiagent': {
                 'policies_to_train': ['learned'],
