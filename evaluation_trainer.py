@@ -9,7 +9,7 @@ from ray.tune.registry import register_env
 from src.callbacks import on_episode_end
 from src.envs import Connect4Env, SquareConnect4Env
 from src.models import ParametricActionsMLP, ParametricActionsCNN
-from src.policies import MCTSPolicy
+from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 
 logger = logging.getLogger('ray.rllib')
 
@@ -74,11 +74,14 @@ if __name__ == '__main__':
             'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'mcts'][agent_id % 2]),
             'policies': {
                 'learned': (None, obs_space, action_space, {'model': model_config}),
+                'learned2': (None, obs_space, action_space, {'model': model_config}),
+                'random': (RandomPolicy, obs_space, action_space, {}),
                 'mcts': (MCTSPolicy, obs_space, action_space, {
                     'player_id': 1,
                     'max_rollouts': num_rollouts,
                     'rollouts_timeout': 2.0,
                 }),
+                'human': (HumanPolicy, obs_space, action_space, {'player_id': 1}),
             },
         }
     mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
@@ -88,8 +91,6 @@ if __name__ == '__main__':
 
     tune.run(
         args.policy,
-        # my_train_fn,
-        # MyPPOTrainer,
         name='EvalTrainer',
         stop={
             # 'timesteps_total': int(10e3),
@@ -118,6 +119,6 @@ if __name__ == '__main__':
             #     'exploration_final_eps': 0.5,
             # },
         }, **tune_config),
-        # restore='/home/dave/ray_results/PPO/PPO_SquareConnect4Env_0_2019-08-26_15-48-13f_i8pykb/checkpoint_2500/checkpoint-2500',
+        # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_12-59-08rq0qg5nh/checkpoint_74/checkpoint-74',
         # resume=True
     )
