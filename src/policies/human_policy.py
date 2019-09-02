@@ -15,7 +15,6 @@ class HumanPolicy(Policy):
         obs_space = config['multiagent']['policies']['human'][1]
         self.board_shape = obs_space['board'].shape
         self.board_size = np.prod(self.board_shape)
-        self.player = 1
 
     def compute_actions(self,
                         obs_batch,
@@ -47,15 +46,16 @@ class HumanPolicy(Policy):
 
         assert len(obs_batch) == 1  # too hard for human to play parallel games
         obs = obs_batch[0]
-        num_actions = self.action_space.n
+        num_actions = self.action_space.n - 1
         board_start = self.action_space.n
         board_end = self.action_space.n + self.board_size
-        action_mask, obs, player = obs[:board_start], obs[board_start:board_end], int(obs[board_end:])
+        action_mask, board = obs[:board_start], obs[board_start:board_end]
+        current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
         obs = obs.reshape(self.board_shape).astype(np.uint8)
         self._render_board(obs)
 
         valid_actions = [i for i in range(num_actions) if action_mask[i]]
-        if player == self.player:
+        if current_player == player_id:
             action = None
             while action not in list(valid_actions):
                 try:
@@ -63,7 +63,7 @@ class HumanPolicy(Policy):
                 except ValueError:
                     pass
         else:
-            action = 0  # dummy action as not our turn
+            action = num_actions  # "pass" action
 
         return np.array([action]), state_batches, {}
 

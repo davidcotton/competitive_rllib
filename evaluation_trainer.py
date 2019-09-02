@@ -37,7 +37,7 @@ if __name__ == '__main__':
         ModelCatalog.register_custom_model('parametric_model', ParametricActionsMLP)
         model_config = {
             'custom_model': 'parametric_model',
-            'fcnet_hiddens': [256, 256],
+            'fcnet_hiddens': [256, 256, 256, 256],
             'fcnet_activation': 'leaky_relu',
         }
 
@@ -59,7 +59,6 @@ if __name__ == '__main__':
             'policies': {
                 'learned': (None, obs_space, action_space, {'model': model_config}),
                 'mcts': (MCTSPolicy, obs_space, action_space, {
-                    'player_id': 1,
                     'max_rollouts': 10000,
                     'rollouts_timeout': rollouts_time,
                 }),
@@ -77,11 +76,10 @@ if __name__ == '__main__':
                 'learned2': (None, obs_space, action_space, {'model': model_config}),
                 'random': (RandomPolicy, obs_space, action_space, {}),
                 'mcts': (MCTSPolicy, obs_space, action_space, {
-                    'player_id': 1,
                     'max_rollouts': num_rollouts,
                     'rollouts_timeout': 2.0,
                 }),
-                'human': (HumanPolicy, obs_space, action_space, {'player_id': 1}),
+                'human': (HumanPolicy, obs_space, action_space, {}),
             },
         }
     mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]

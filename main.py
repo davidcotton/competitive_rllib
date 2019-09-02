@@ -20,8 +20,8 @@ if __name__ == '__main__':
     parser.add_argument("--use-cnn", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
-    tune_config = {}
 
+    tune_config = {}
     ray.init(local_mode=args.debug)
 
     # ModelCatalog.register_custom_preprocessor('flatten_obs_preprocessor', FlattenObsPreprocessor)

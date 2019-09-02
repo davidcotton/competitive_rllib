@@ -13,15 +13,14 @@ logger = logging.getLogger('ray.rllib')
 class MCTSPolicy(Policy):
     """Monte-Carlo Tree Search."""
 
-    def __init__(self, observation_space, action_space, config):
+    def __init__(self, observation_space, action_space, config) -> None:
         super().__init__(observation_space, action_space, config)
-        mcts_config = config['multiagent']['policies']['mcts']
-        obs_space = mcts_config[1]
+        policy_config = config['multiagent']['policies']['mcts']
+        obs_space = policy_config[1]
         self.board_shape = obs_space['board'].shape
         self.board_size = np.prod(obs_space['board'].shape)
-        self.player = mcts_config[3]['player_id']
-        self.max_rollouts = mcts_config[3]['max_rollouts']
-        self.rollouts_timeout = mcts_config[3]['rollouts_timeout']
+        self.max_rollouts = policy_config[3]['max_rollouts']
+        self.rollouts_timeout = policy_config[3]['rollouts_timeout']
         self.metrics = {'num_rollouts': []}
 
     def compute_actions(self,
@@ -53,11 +52,13 @@ class MCTSPolicy(Policy):
         """
 
         actions = []
+        num_actions = self.action_space.n - 1  # last action is the "pass" action
         board_start = self.action_space.n
         board_end = self.action_space.n + self.board_size
         for obs in obs_batch:
-            action_mask, board, player = obs[:board_start], obs[board_start:board_end], obs[board_end:].item()
-            if player == self.player:
+            action_mask, board = obs[:board_start], obs[board_start:board_end]
+            current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
+            if current_player == player_id:
                 board = np.flip(board.reshape(self.board_shape), axis=0).astype(np.uint8)
                 if self.board_shape == (7, 7):  # if square obs, cut off the filler `3`s at the top
                     board = board[1:]
@@ -66,7 +67,7 @@ class MCTSPolicy(Policy):
                 actions.append(action)
                 self.metrics['num_rollouts'].append(metrics['num_rollouts'])
             else:
-                actions.append(0)  # dummy action as not our turn
+                actions.append(num_actions)  # "pass" action
 
         return np.array(actions), state_batches, {}
 
@@ -77,6 +78,9 @@ class MCTSPolicy(Policy):
         pass
 
     def set_weights(self, weights):
+        pass
+
+    def set_epsilon(self, epsilon):
         pass
 
 

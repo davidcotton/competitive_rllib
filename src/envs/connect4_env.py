@@ -24,11 +24,12 @@ class Connect4Env(MultiAgentEnv):
         self.game = Connect4(env_config)
         board_height = self.game.board_height
         board_width = self.game.board_width
-        self.action_space = spaces.Discrete(board_width)
+        self.action_space = spaces.Discrete(board_width + 1)
         self.observation_space = spaces.Dict({
+            'action_mask': spaces.Box(low=0, high=1, shape=(board_width + 1,), dtype=np.uint8),
             'board': spaces.Box(low=0, high=2, shape=(board_height, board_width), dtype=np.uint8),
-            'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
-            'player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
+            'current_player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
+            'player_id': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
         # maintain a copy of each player's observations
         # each board is player invariant, has the player as `1` and the opponent as `2`
@@ -37,14 +38,15 @@ class Connect4Env(MultiAgentEnv):
     def reset(self):
         self.game = Connect4(self.game.env_config)
         self.boards = [np.zeros((self.game.board_height, self.game.board_width), dtype=np.uint8) for _ in range(2)]
-        action_mask = self.game.get_action_mask()
         obs_dict = {
             i: {
+                'action_mask': self.get_action_mask(i),
                 'board': self.get_state(i),
-                'action_mask': action_mask,
-                'player': np.array([0])  # player0 is always first
+                'current_player': np.array([0]),  # player0 is always first
+                'player_id': np.array([i]),
             } for i in range(2)
         }
+
         return obs_dict
 
     def step(self, action_dict):
@@ -59,18 +61,22 @@ class Connect4Env(MultiAgentEnv):
         player = self.game.player ^ 1  # game.player is incremented in game.move(), so use flipped value internally
         next_player = self.game.player
         column = action_dict[player]
-        if not self.game.is_valid_move(column):
+
+        try:
+            assert self.game.is_valid_move(column)
+        except BaseException:
             raise ValueError('Invalid action, column %s is full' % column)
+
         self.game.move(column)
         self.boards[0][self.game.column_counts[column] - 1][column] = self.game.player + 1
         self.boards[1][self.game.column_counts[column] - 1][column] = (self.game.player ^ 1) + 1
 
-        action_mask = self.game.get_action_mask()
         obs = {
             i: {
                 'board': self.get_state(i),
-                'action_mask': action_mask,
-                'player': np.array([next_player])
+                'action_mask': self.get_action_mask(i),
+                'player_id': np.array([i]),
+                'current_player': np.array([next_player]),
             } for i in range(2)
         }
         rewards = {player: self.game.get_reward(), next_player: 0.0}
@@ -88,6 +94,14 @@ class Connect4Env(MultiAgentEnv):
         state = np.flip(board, axis=0)
         return state
 
+    def get_action_mask(self, player):
+        if player == self.game.player ^ 1:
+            mask = np.append(self.game.get_action_mask(), [0])
+        else:
+            mask = np.zeros((8,), dtype=np.uint8)
+            mask[-1] = 1
+        return mask
+
 
 class FlattenedConnect4Env(Connect4Env):
     def __init__(self, env_config=None) -> None:
@@ -96,8 +110,9 @@ class FlattenedConnect4Env(Connect4Env):
         board_width = self.game.board_width
         self.observation_space = spaces.Dict({
             'board': spaces.Box(low=0, high=2, shape=(board_height * board_width,), dtype=np.uint8),
-            'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
-            'player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
+            'action_mask': spaces.Box(low=0, high=1, shape=(board_width + 1,), dtype=np.uint8),
+            'current_player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
+            'player_id': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
 
     def get_state(self, player=None) -> np.ndarray:
@@ -112,8 +127,9 @@ class SquareConnect4Env(Connect4Env):
         board_width = self.game.board_width
         self.observation_space = spaces.Dict({
             'board': spaces.Box(low=0, high=3, shape=(board_height + 1, board_width), dtype=np.uint8),
-            'action_mask': spaces.Box(low=0, high=1, shape=(board_width,), dtype=np.uint8),
-            'player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
+            'action_mask': spaces.Box(low=0, high=1, shape=(board_width + 1,), dtype=np.uint8),
+            'current_player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
+            'player_id': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
 
     def get_state(self, player=None) -> np.ndarray:

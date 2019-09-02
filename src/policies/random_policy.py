@@ -10,6 +10,12 @@ logger = logging.getLogger('ray.rllib')
 class RandomPolicy(Policy):
     """Pick actions uniformly random from available actions each turn."""
 
+    def __init__(self, observation_space, action_space, config) -> None:
+        super().__init__(observation_space, action_space, config)
+        policy_config = config['multiagent']['policies']['random']
+        obs_space = policy_config[1]
+        self.board_size = np.prod(obs_space['board'].shape)
+
     def compute_actions(self,
                         obs_batch,
                         state_batches,
@@ -38,12 +44,18 @@ class RandomPolicy(Policy):
                 {"f1": [BATCH_SIZE, ...], "f2": [BATCH_SIZE, ...]}.
         """
 
-        num_actions = self.action_space.n
         actions = []
+        num_actions = self.action_space.n - 1  # last action is the "pass" action
+        board_start = self.action_space.n
+        board_end = self.action_space.n + self.board_size
         for obs in obs_batch:
-            action_mask = obs[:num_actions]  # DictPreprocessor concats the obs dict parts together
-            valid_actions = [i for i in range(num_actions) if action_mask[i]]
-            actions.append(random.choice(valid_actions))
+            action_mask, board = obs[:board_start], obs[board_start:board_end]
+            current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
+            if current_player == player_id:
+                legal_actions = [i for i in range(num_actions) if action_mask[i]]
+                actions.append(random.choice(legal_actions))
+            else:
+                actions.append(num_actions)  # "pass" action
 
         return np.array(actions), state_batches, {}
 
