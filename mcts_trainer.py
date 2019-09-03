@@ -1,3 +1,5 @@
+"""Train a RL policy against a customisable MCTS agent."""
+
 import argparse
 import logging
 import random
@@ -39,7 +41,8 @@ if __name__ == '__main__':
         ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsMLP)
         model_config = {
             'custom_model': 'parametric_actions_model',
-            'fcnet_hiddens': [256, 256],
+            # 'fcnet_hiddens': [256, 256],
+            'fcnet_hiddens': [128, 128],
             'fcnet_activation': 'leaky_relu',
         }
 
@@ -73,7 +76,7 @@ if __name__ == '__main__':
 
     tune.run(
         args.policy,
-        name='selfplay',
+        name='mcts_trainer',
         stop={
             # 'timesteps_total': int(50e3),
             # 'timesteps_total': int(10e6),
@@ -111,8 +114,8 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                         'rollouts_timeout': 1.0,
-                        'max_rollouts': 32,
-                        # 'max_rollouts': 64,
+                        # 'max_rollouts': 32,
+                        'max_rollouts': 64,
                         # 'max_rollouts': 96,
                     }),
                     'human': (HumanPolicy, obs_space, action_space, {}),
@@ -127,7 +130,7 @@ if __name__ == '__main__':
             # },
         }, **tune_config),
         # checkpoint_freq=100,
-        # checkpoint_at_end=True,
+        checkpoint_at_end=True,
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_20-15-16tvle8xqv/checkpoint_13486/checkpoint-13486',
         # resume=True
     )

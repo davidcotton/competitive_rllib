@@ -1,3 +1,5 @@
+"""Evaluate a trained agent against different MCTS strengths."""
+
 import argparse
 import logging
 
@@ -24,9 +26,9 @@ if __name__ == '__main__':
 
     if args.use_cnn:
         env_cls = SquareConnect4Env
-        ModelCatalog.register_custom_model('parametric_model', ParametricActionsCNN)
+        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsCNN)
         model_config = {
-            'custom_model': 'parametric_model',
+            'custom_model': 'parametric_actions_model',
             'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
             'conv_activation': 'leaky_relu',
             'fcnet_hiddens': [256, 256],
@@ -34,10 +36,11 @@ if __name__ == '__main__':
         }
     else:
         env_cls = Connect4Env
-        ModelCatalog.register_custom_model('parametric_model', ParametricActionsMLP)
+        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsMLP)
         model_config = {
-            'custom_model': 'parametric_model',
-            'fcnet_hiddens': [256, 256],
+            'custom_model': 'parametric_actions_model',
+            # 'fcnet_hiddens': [256, 256],
+            'fcnet_hiddens': [128, 128],
             'fcnet_activation': 'leaky_relu',
         }
 
@@ -94,7 +97,7 @@ if __name__ == '__main__':
 
     tune.run(
         args.policy,
-        name='EvalTrainer',
+        name='mcts_trainer',
         trial_name_creator=tune.function(name_trial),
         stop={
             # 'timesteps_total': int(10e3),
