@@ -40,7 +40,6 @@ if __name__ == '__main__':
         model_config = {
             'custom_model': 'parametric_actions_model',
             'fcnet_hiddens': [256, 256],
-            # 'fcnet_hiddens': [256, 256, 256, 256],
             'fcnet_activation': 'leaky_relu',
         }
 
@@ -112,8 +111,8 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                         'rollouts_timeout': 1.0,
-                        # 'max_rollouts': 32,
-                        'max_rollouts': 64,
+                        'max_rollouts': 32,
+                        # 'max_rollouts': 64,
                         # 'max_rollouts': 96,
                     }),
                     'human': (HumanPolicy, obs_space, action_space, {}),
@@ -128,9 +127,7 @@ if __name__ == '__main__':
             # },
         }, **tune_config),
         # checkpoint_freq=100,
-        checkpoint_at_end=True,
-        # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_12-59-08rq0qg5nh/checkpoint_74/checkpoint-74',
-        # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_13-35-43bmvyhyld/checkpoint_191/checkpoint-191',
+        # checkpoint_at_end=True,
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_20-15-16tvle8xqv/checkpoint_13486/checkpoint-13486',
         # resume=True
     )
