@@ -37,7 +37,7 @@ if __name__ == '__main__':
         ModelCatalog.register_custom_model('parametric_model', ParametricActionsMLP)
         model_config = {
             'custom_model': 'parametric_model',
-            'fcnet_hiddens': [256, 256, 256, 256],
+            'fcnet_hiddens': [256, 256],
             'fcnet_activation': 'leaky_relu',
         }
 
@@ -87,9 +87,15 @@ if __name__ == '__main__':
 
     ray.init(local_mode=args.debug)
 
+    def name_trial(trial):
+        """Give trials a more readable name in terminal & Tensorboard."""
+        num_mcts_rollouts = trial.config['multiagent']['policies']['mcts'][3]['max_rollouts']
+        return f'{trial.trainable_name}_MCTS({num_mcts_rollouts})'
+
     tune.run(
         args.policy,
         name='EvalTrainer',
+        trial_name_creator=tune.function(name_trial),
         stop={
             # 'timesteps_total': int(10e3),
             # 'episodes_total': 400,
