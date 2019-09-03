@@ -87,11 +87,20 @@ if __name__ == '__main__':
         config=dict({
             'env': 'c4',
             'env_config': {},
-            'gamma': 0.9,
+            # 'gamma': 0.9,
             # 'num_workers': 0,
             'num_workers': 20,
-            'num_gpus': 0,
-            # 'num_gpus': 1,
+            # 'num_gpus': 0,
+            'num_gpus': 1,
+            # PPO customisations
+            'lr': 0.001,
+            'clip_param': 0.2,
+            'gamma': 0.995,
+            'lambda': 0.95,
+            'train_batch_size': 65536,
+            'sgd_minibatch_size': 4096,
+            'num_sgd_iter': 6,
+            'num_envs_per_worker': 32,
             'multiagent': {
                 'policies_to_train': ['learned'],
                 # 'policies_to_train': ['learned', 'learned2'],
