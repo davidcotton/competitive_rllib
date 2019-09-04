@@ -79,7 +79,10 @@ class Connect4Env(MultiAgentEnv):
                 'current_player': np.array([next_player]),
             } for i in range(2)
         }
-        rewards = {player: self.game.get_reward(), next_player: 0.0}
+        rewards = {
+            player: self.game.get_reward(player),
+            next_player: self.game.get_reward(next_player)
+        }
         game_over = {'__all__': self.game.is_game_over()}
 
         return obs, rewards, game_over, {}
