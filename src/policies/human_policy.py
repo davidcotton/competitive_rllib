@@ -51,8 +51,8 @@ class HumanPolicy(Policy):
         board_end = self.action_space.n + self.board_size
         action_mask, board = obs[:board_start], obs[board_start:board_end]
         current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
-        obs = obs.reshape(self.board_shape).astype(np.uint8)
-        self._render_board(obs)
+        board = board.reshape(self.board_shape).astype(np.uint8)
+        self._render_board(board)
 
         valid_actions = [i for i in range(num_actions) if action_mask[i]]
         if current_player == player_id:
