@@ -85,7 +85,8 @@ if __name__ == '__main__':
                 'human': (HumanPolicy, obs_space, action_space, {}),
             },
         }
-    mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
+    # mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
+    mcts_num_rollouts = [128, 256, 512, 1024, 2048]
     # mcts_num_rollouts = [5, 10, 50, 100, 250, 500, 1000]
 
     ray.init(local_mode=args.debug)
@@ -108,11 +109,23 @@ if __name__ == '__main__':
             'env': 'c4',
             'env_config': {},
             # 'log_level': 'DEBUG',
-            'gamma': 0.9,
+            # 'gamma': 0.9,
             # 'num_workers': 0,
             'num_workers': 20,
-            # 'num_gpus': 1,
-            'num_gpus': 0,
+            'num_gpus': 1,
+            # 'num_gpus': 0,
+
+            # PPO customisations
+            'lr': 0.001,
+            'clip_param': 0.2,
+            'gamma': 0.995,
+            'lambda': 0.95,
+            # # 'kl_coeff': 1.0,
+            # 'train_batch_size': 65536,
+            # 'sgd_minibatch_size': 4096,
+            # 'num_sgd_iter': 6,
+            # 'num_envs_per_worker': 32,
+
             # 'multiagent': tune.grid_search([get_policy_by_time(t) for t in mcts_rollout_times]),
             'multiagent': tune.grid_search([get_policy_by_num(n) for n in mcts_num_rollouts]),
             'callbacks': {'on_episode_end': tune.function(on_episode_end)},
@@ -127,5 +140,6 @@ if __name__ == '__main__':
             # },
         }, **tune_config),
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_12-59-08rq0qg5nh/checkpoint_74/checkpoint-74',
+        restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
         # resume=True
     )
