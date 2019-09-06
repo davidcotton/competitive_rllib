@@ -22,6 +22,7 @@ if __name__ == '__main__':
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
+    ray.init(local_mode=args.debug)
     tune_config = {}
 
     if args.use_cnn:
@@ -55,41 +56,44 @@ if __name__ == '__main__':
             'dueling': False,
         })
 
+    policies = {
+        'learned1': (None, obs_space, action_space, {'model': model_config}),
+        'learned2': (None, obs_space, action_space, {'model': model_config}),
+        'learned3': (None, obs_space, action_space, {'model': model_config}),
+        'learned4': (None, obs_space, action_space, {'model': model_config}),
+        # 'learned5': (None, obs_space, action_space, {'model': model_config}),
+        # 'learned6': (None, obs_space, action_space, {'model': model_config}),
+        # 'learned7': (None, obs_space, action_space, {'model': model_config}),
+        # 'learned8': (None, obs_space, action_space, {'model': model_config}),
+    }
+
     def get_policy_by_time(rollouts_time):
         return {
-            'policies_to_train': ['learned'],
-            'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'mcts'][agent_id % 2]),
-            'policies': {
-                'learned': (None, obs_space, action_space, {'model': model_config}),
+            'policies_to_train': [*policies],
+            'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'mcts'][agent_id % 2]),
+            'policies': dict({
                 'mcts': (MCTSPolicy, obs_space, action_space, {
                     'max_rollouts': 10000,
                     'rollouts_timeout': rollouts_time,
                 }),
-            },
+            }, **policies),
         }
     mcts_rollout_times = [0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0]
     # mcts_rollout_times = [0.001, 0.005, 0.01]
 
     def get_policy_by_num(num_rollouts):
         return {
-            'policies_to_train': ['learned'],
-            'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'mcts'][agent_id % 2]),
-            'policies': {
-                'learned': (None, obs_space, action_space, {'model': model_config}),
-                'learned2': (None, obs_space, action_space, {'model': model_config}),
+            'policies_to_train': [*policies],
+            'policy_mapping_fn': tune.function(lambda agent_id: ['learned3', 'mcts'][agent_id % 2]),
+            'policies': dict({
                 'random': (RandomPolicy, obs_space, action_space, {}),
-                'mcts': (MCTSPolicy, obs_space, action_space, {
-                    'max_rollouts': num_rollouts,
-                    'rollouts_timeout': 2.0,
-                }),
+                'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts, 'rollouts_timeout': 2.0}),
                 'human': (HumanPolicy, obs_space, action_space, {}),
-            },
+            }, **policies),
         }
-    # mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
-    mcts_num_rollouts = [128, 256, 512, 1024, 2048]
+    mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
+    # mcts_num_rollouts = [128, 256, 512, 1024, 2048]
     # mcts_num_rollouts = [5, 10, 50, 100, 250, 500, 1000]
-
-    ray.init(local_mode=args.debug)
 
     def name_trial(trial):
         """Give trials a more readable name in terminal & Tensorboard."""
@@ -98,11 +102,9 @@ if __name__ == '__main__':
 
     tune.run(
         args.policy,
-        name='mcts_trainer',
+        name='mcts_evaluator',
         trial_name_creator=tune.function(name_trial),
         stop={
-            # 'timesteps_total': int(10e3),
-            # 'episodes_total': 400,
             'episodes_total': 1000,
         },
         config=dict({
@@ -111,9 +113,9 @@ if __name__ == '__main__':
             # 'log_level': 'DEBUG',
             # 'gamma': 0.9,
             # 'num_workers': 0,
+            # 'num_gpus': 0,
             'num_workers': 20,
             'num_gpus': 1,
-            # 'num_gpus': 0,
 
             # PPO customisations
             'lr': 0.001,
@@ -140,6 +142,8 @@ if __name__ == '__main__':
             # },
         }, **tune_config),
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_12-59-08rq0qg5nh/checkpoint_74/checkpoint-74',
-        restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
+        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
+        # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_11-52-59zfekt1j_/checkpoint_79/checkpoint-79',
+        restore='//home/dave/ray_results/main/PPO_c4_0_2019-09-06_12-24-03jjal0_ts/checkpoint_782/checkpoint-782',
         # resume=True
     )
