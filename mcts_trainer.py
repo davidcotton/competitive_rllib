@@ -61,7 +61,8 @@ if __name__ == '__main__':
         tune_config['log_level'] = 'DEBUG'
 
     policy = None
-    policies = ['learned', 'mcts']
+    policies = ['learned1', 'mcts']
+    # policies = ['learned1', 'human']
 
     def policy_mapping_fn(agent_id):
         global policy
@@ -78,42 +79,37 @@ if __name__ == '__main__':
         args.policy,
         name='mcts_trainer',
         stop={
-            # 'timesteps_total': int(50e3),
-            # 'timesteps_total': int(10e6),
-            # 'policy_reward_mean': {'learned': 0.95},
-            'policy_reward_mean': {'learned': 0.8},
-            # 'policy_reward_mean': {'learned': 0.8, 'learned2': 0.8},
+            # 'policy_reward_mean': {'learned1': 0.95},
+            'policy_reward_mean': {'learned1': 0.8},
         },
         config=dict({
             'env': 'c4',
             'env_config': {},
             # 'gamma': 0.9,
-            # 'num_workers': 0,
-            'num_workers': 20,
-            # 'num_gpus': 0,
-            'num_gpus': 1,
+            'num_workers': 0,
+            'num_gpus': 0,
+            # 'num_workers': 20,
+            # 'num_gpus': 1,
+            # ------------------------
             # PPO customisations
             'lr': 0.001,
             'clip_param': 0.2,
             'gamma': 0.995,
             'lambda': 0.95,
-            'train_batch_size': 65536,
-            'sgd_minibatch_size': 4096,
-            'num_sgd_iter': 6,
-            'num_envs_per_worker': 32,
+            # 'kl_coeff': 1.0,
+            # 'train_batch_size': 65536,
+            # 'sgd_minibatch_size': 4096,
+            # 'num_sgd_iter': 6,
+            # 'num_envs_per_worker': 32,
+            # ------------------------
             'multiagent': {
-                'policies_to_train': ['learned'],
-                # 'policies_to_train': ['learned', 'learned2'],
+                'policies_to_train': ['learned1'],
                 'policy_mapping_fn': tune.function(policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'random'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'learned2'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'mcts'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'human'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'mcts'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'human'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['mcts', 'human'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda _: 'random'),
                 'policies': {
-                    'learned': (None, obs_space, action_space, {'model': model_config}),
-                    'learned2': (None, obs_space, action_space, {'model': model_config}),
+                    'learned1': (None, obs_space, action_space, {'model': model_config}),
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'mcts': (MCTSPolicy, obs_space, action_space, {
                         # 'max_rollouts': 10000,
@@ -124,8 +120,9 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                         'rollouts_timeout': 1.0,
                         # 'max_rollouts': 32,
-                        'max_rollouts': 64,
+                        # 'max_rollouts': 64,
                         # 'max_rollouts': 96,
+                        'max_rollouts': 128,
                     }),
                     'human': (HumanPolicy, obs_space, action_space, {}),
                 },
@@ -141,5 +138,6 @@ if __name__ == '__main__':
         # checkpoint_freq=100,
         checkpoint_at_end=True,
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_20-15-16tvle8xqv/checkpoint_13486/checkpoint-13486',
+        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
         # resume=True
     )
