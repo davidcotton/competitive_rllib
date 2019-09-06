@@ -101,8 +101,6 @@ if __name__ == '__main__':
             # 'num_gpus': 0,
             'num_workers': 20,
             'num_gpus': 1,
-            # 'sample_batch_size': 10,
-            # 'train_batch_size': 200,
 
             # ------------------------
             # PPO customisations
