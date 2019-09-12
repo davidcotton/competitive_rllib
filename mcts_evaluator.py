@@ -144,6 +144,8 @@ if __name__ == '__main__':
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_12-59-08rq0qg5nh/checkpoint_74/checkpoint-74',
         # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
         # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_11-52-59zfekt1j_/checkpoint_79/checkpoint-79',
-        restore='//home/dave/ray_results/main/PPO_c4_0_2019-09-06_12-24-03jjal0_ts/checkpoint_782/checkpoint-782',
+        # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_12-24-03jjal0_ts/checkpoint_782/checkpoint-782',
+        # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_14-22-37v_bjhds7/checkpoint_782/checkpoint-782',
+        restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-07_09-42-2148shgivu/checkpoint_7813/checkpoint-7813',
         # resume=True
     )
