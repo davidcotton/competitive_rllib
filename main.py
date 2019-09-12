@@ -57,7 +57,7 @@ if __name__ == '__main__':
     if args.debug:
         tune_config['log_level'] = 'DEBUG'
 
-    policy = None
+    player1, player2 = None, None
     policies = {
         'learned1': (None, obs_space, action_space, {'model': model_config}),
         'learned2': (None, obs_space, action_space, {'model': model_config}),
@@ -68,26 +68,21 @@ if __name__ == '__main__':
         # 'learned7': (None, obs_space, action_space, {'model': model_config}),
         # 'learned8': (None, obs_space, action_space, {'model': model_config}),
     }
-    # policies = ['learned', 'human']
 
     def policy_mapping_fn(agent_id):
-        global policy
+        global player1, player2
         if agent_id == 0:
-            assert policy is None
-            policy = random.choice([*policies])
-            return policy
+            player1, player2 = random.sample([*policies], k=2)
+            return player1
         else:
-            remaining = [*policies]
-            remaining.remove(policy)
-            policy = None
-            return random.choice(remaining)
+            return player2
 
     tune.run(
         args.policy,
         name='main',
         stop={
             # 'timesteps_total': int(500e3),
-            # 'timesteps_total': int(1e9),
+            # 'timesteps_total': int(2e9),
             'timesteps_total': int(100e6),
             # 'policy_reward_mean': {'learned': 0.99},
             # 'policy_reward_mean': {'learned': 0.8, 'learned2': 0.8},
