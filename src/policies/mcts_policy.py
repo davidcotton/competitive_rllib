@@ -85,6 +85,7 @@ class MCTSPolicy(Policy):
 
 
 def mcts(current_state: Connect4, max_rollouts=10000, rollouts_timeout=100):
+    assert max_rollouts > 0, 'MCTS `max_rollouts` must be a positive integer'
     root = Node(state=current_state)
     start = time.clock()
     for i in range(max_rollouts):
