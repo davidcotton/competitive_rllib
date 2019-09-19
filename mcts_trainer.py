@@ -58,22 +58,31 @@ if __name__ == '__main__':
         })
 
     if args.debug:
-        tune_config['log_level'] = 'DEBUG'
+        tune_config.update({
+            'log_level': 'DEBUG',
+            'num_workers': 1,
+        })
+    else:
+        tune_config.update({
+            'num_workers': 20,
+            'num_gpus': 1,
+            'train_batch_size': 65536,
+            'sgd_minibatch_size': 4096,
+            'num_sgd_iter': 6,
+            'num_envs_per_worker': 32,
+        })
 
-    policy = None
+    player1, player2 = None, None
     policies = ['learned1', 'mcts']
     # policies = ['learned1', 'human']
 
     def policy_mapping_fn(agent_id):
-        global policy
+        global player1, player2
         if agent_id == 0:
-            assert policy is None
-            policy = random.choice(policies)
-            return policy
+            player1, player2 = random.sample(policies, k=2)
+            return player1
         else:
-            value = policies[0] if policy == policies[1] else policies[1]
-            policy = None
-            return value
+            return player2
 
     tune.run(
         args.policy,
@@ -85,23 +94,11 @@ if __name__ == '__main__':
         config=dict({
             'env': 'c4',
             'env_config': {},
-            # 'gamma': 0.9,
-            'num_workers': 0,
-            'num_gpus': 0,
-            # 'num_workers': 20,
-            # 'num_gpus': 1,
-            # ------------------------
-            # PPO customisations
             'lr': 0.001,
-            'clip_param': 0.2,
             'gamma': 0.995,
             'lambda': 0.95,
+            'clip_param': 0.2,
             # 'kl_coeff': 1.0,
-            # 'train_batch_size': 65536,
-            # 'sgd_minibatch_size': 4096,
-            # 'num_sgd_iter': 6,
-            # 'num_envs_per_worker': 32,
-            # ------------------------
             'multiagent': {
                 'policies_to_train': ['learned1'],
                 'policy_mapping_fn': tune.function(policy_mapping_fn),
@@ -135,7 +132,7 @@ if __name__ == '__main__':
             #     'entropy_coeff_schedule': None,
             # },
         }, **tune_config),
-        # checkpoint_freq=100,
+        # checkpoint_freq=10,
         checkpoint_at_end=True,
         # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_20-15-16tvle8xqv/checkpoint_13486/checkpoint-13486',
         # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
