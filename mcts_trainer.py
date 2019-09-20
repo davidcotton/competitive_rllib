@@ -19,9 +19,10 @@ logger = logging.getLogger('ray.rllib')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, default="PG")
-    parser.add_argument("--use-cnn", action="store_true")
-    parser.add_argument("--debug", action="store_true")
+    parser.add_argument('--policy', type=str, default='PG')
+    parser.add_argument('--use-cnn', action='store_true')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--save-experience', action='store_true')
     args = parser.parse_args()
     ray.init(local_mode=args.debug)
     tune_config = {}
@@ -72,6 +73,9 @@ if __name__ == '__main__':
             'num_envs_per_worker': 32,
         })
 
+    if args.save_experience:
+        tune_config['output'] = 'experience'
+
     player1, player2 = None, None
     policies = ['learned1', 'mcts']
     # policies = ['learned1', 'human']
@@ -116,10 +120,10 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                         'rollouts_timeout': 1.0,
-                        # 'max_rollouts': 32,
+                        'max_rollouts': 32,
                         # 'max_rollouts': 64,
                         # 'max_rollouts': 96,
-                        'max_rollouts': 128,
+                        # 'max_rollouts': 128,
                     }),
                     'human': (HumanPolicy, obs_space, action_space, {}),
                 },
