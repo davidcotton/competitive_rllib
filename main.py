@@ -55,7 +55,19 @@ if __name__ == '__main__':
         })
 
     if args.debug:
-        tune_config['log_level'] = 'DEBUG'
+        tune_config.update({
+            'log_level': 'DEBUG',
+            'num_workers': 1,
+        })
+    else:
+        tune_config.update({
+            'num_workers': 20,
+            'num_gpus': 1,
+            'train_batch_size': 65536,
+            'sgd_minibatch_size': 4096,
+            'num_sgd_iter': 6,
+            'num_envs_per_worker': 32,
+        })
 
     player1, player2 = None, None
     policies = {
@@ -90,26 +102,13 @@ if __name__ == '__main__':
         config=dict({
             'env': 'c4',
             'env_config': {},
+            'lr': 0.001,
+            'gamma': 0.995,
             # 'gamma': 0.9,
             # 'gamma': tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99, 0.999, 0.9999, 1.0]),
-            # 'num_workers': 0,
-            # 'num_gpus': 0,
-            'num_workers': 20,
-            'num_gpus': 1,
-
-            # ------------------------
-            # PPO customisations
-            'lr': 0.001,
             'clip_param': 0.2,
-            'gamma': 0.995,
             'lambda': 0.95,
             # 'kl_coeff': 1.0,
-            'train_batch_size': 65536,
-            'sgd_minibatch_size': 4096,
-            'num_sgd_iter': 6,
-            'num_envs_per_worker': 32,
-            # ------------------------
-
             'multiagent': {
                 'policies_to_train': [*policies],
                 'policy_mapping_fn': tune.function(policy_mapping_fn),
