@@ -32,8 +32,8 @@ if __name__ == '__main__':
     env = env_cls()
     obs_space = env.observation_space
     action_space = env.action_space
-
     policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
+
     player1, player2 = None, None
 
     def policy_mapping_fn(agent_id):
@@ -48,24 +48,18 @@ if __name__ == '__main__':
     elo_rater = EloRater(policies.keys())
 
     def elo_on_episode_end(info):
-        """Update agent Elo ratings.
-
-        :param info: A dictionary of callback info.
-        """
-
         global elo_rater
         agents = [agent[1] for agent in info['episode'].agent_rewards.keys()]
         rewards = list(info['episode'].agent_rewards.values())
-        if rewards[0] == rewards[1]:  # draw
+        if rewards[0] == rewards[1]:
             winner = 'draw'
         elif rewards[0] > rewards[1]:
             winner = agents[0]
         else:
             winner = agents[1]
-
         ratings = elo_rater.rate(*agents, winner)
-        ratings = {'elo_' + k: v for k, v in ratings.items()}
-        info['episode'].custom_metrics.update(ratings)
+        info['episode'].custom_metrics.update({'elo_' + k: v for k, v in ratings.items()})
+
 
     tune.run(
         args.policy,

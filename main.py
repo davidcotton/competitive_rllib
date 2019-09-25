@@ -15,6 +15,7 @@ logger = logging.getLogger('ray.rllib')
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--policy", type=str, default="PPO")
+    parser.add_argument("--num-learners", type=int, default=2)
     parser.add_argument("--use-cnn", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -28,6 +29,7 @@ if __name__ == '__main__':
     env = env_cls()
     obs_space = env.observation_space
     action_space = env.action_space
+    policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
 
     if args.policy == 'DQN':
         tune_config.update({
@@ -36,8 +38,6 @@ if __name__ == '__main__':
         })
 
     player1, player2 = None, None
-    num_learners = 2
-    policies = get_learner_policy_configs(num_learners, obs_space, action_space, model_config)
 
     def policy_mapping_fn(agent_id):
         global player1, player2
