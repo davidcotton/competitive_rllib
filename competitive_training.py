@@ -1,24 +1,30 @@
 import argparse
 import logging
+import time
 import random
 
 import ray
 from ray import tune
+from ray.exceptions import RayError
 from ray.rllib.agents.ppo.ppo import PPOTrainer, DEFAULT_CONFIG as PPO_TRAINER_CONFIG, choose_policy_optimizer, \
     validate_config, update_kl, warn_about_bad_reward_scales
 from ray.rllib.agents.ppo.ppo_policy import PPOTFPolicy, KLCoeffMixin, ValueNetworkMixin, ppo_surrogate_loss, \
     kl_and_loss_stats, vf_preds_and_logits_fetches, postprocess_ppo_gae, clip_gradients, setup_config, setup_mixins
-from ray.rllib.agents.trainer import Trainer
+from ray.rllib.agents.trainer import Trainer, MAX_WORKER_FAILURE_RETRIES
 from ray.rllib.agents.trainer_template import build_trainer
+from ray.rllib.evaluation.worker_set import WorkerSet
 from ray.rllib.models import ModelCatalog
 from ray.rllib.policy.tf_policy import LearningRateSchedule, EntropyCoeffSchedule
 from ray.rllib.policy.tf_policy_template import build_tf_policy
+from ray.rllib.utils import FilterManager
+from ray.rllib.utils.annotations import override, PublicAPI
 from ray.tune.trainable import Trainable
 from ray.tune.registry import register_env
 
 from src.envs import Connect4Env, SquareConnect4Env
 from src.models import ParametricActionsMLP, ParametricActionsCNN
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
+from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
 
 logger = logging.getLogger('ray.rllib')
 
@@ -57,10 +63,11 @@ trainer_updates = []
 
 def my_train_fn(config, reporter):
     global trainable_policies, active_policy, trainer_updates
+
     # ppo_trainer = MyPPOTrainer(env='c4', config=config)
     ppo_trainer = PPOTrainer(env='c4', config=config)
 
-    trainable_policies = ppo_trainer.workers.foreach_worker(lambda w: w.policies_to_train)[0][:]
+    # trainable_policies = ppo_trainer.workers.foreach_worker(lambda w: w.policies_to_train)[0][:]
     # trainable_policies = ppo_trainer.workers.foreach_worker(
     #     lambda w: w.foreach_trainable_policy(lambda p, i: (i, p))
     # )
@@ -69,7 +76,7 @@ def my_train_fn(config, reporter):
         result = ppo_trainer.train()
         reporter(**result)
 
-        # timestep = result['timesteps_total']
+        timestep = result['timesteps_total']
         # print('\n')
         # print('$$$$$$$$$$$$$$$$$$$$$$$')
         # print('timestep: {:,}'.format(timestep))
@@ -111,6 +118,9 @@ def my_train_fn(config, reporter):
         # print('$$$$$$$$$$$$$$$$$$$$$$$')
         # print('\n')
 
+        if timestep > int(1e6):
+            break
+
         # if result["episode_reward_mean"] > 200:
         #     phase = 2
         # elif result["episode_reward_mean"] > 100:
@@ -121,78 +131,103 @@ def my_train_fn(config, reporter):
         #     lambda ev: ev.foreach_env(
         #         lambda env: env.set_phase(phase)))
 
+    ppo_trainer.save()
+    ppo_trainer.stop()
+
 
 class MyTrainable(Trainable):
     def _train(self):
         ppo_trainer = PPOTrainer(env='c4', config=self.config)
         while True:
             result = ppo_trainer.train()
-            reporter(**result)
+            # reporter(**result)
+            print('ran iteration')
 
 
 class MyTrainer(Trainer):
-    pass
+    @override(Trainable)
+    @PublicAPI
+    def train(self):
+        """Overrides super.train to synchronize global vars."""
+
+        if self._has_policy_optimizer():
+            self.global_vars["timestep"] = self.optimizer.num_steps_sampled
+            self.optimizer.workers.local_worker().set_global_vars(
+                self.global_vars)
+            for w in self.optimizer.workers.remote_workers():
+                w.set_global_vars.remote(self.global_vars)
+            logger.debug("updated global vars: {}".format(self.global_vars))
+
+        result = None
+        for _ in range(1 + MAX_WORKER_FAILURE_RETRIES):
+            try:
+                result = Trainable.train(self)
+            except RayError as e:
+                if self.config["ignore_worker_failures"]:
+                    logger.exception(
+                        "Error in train call, attempting to recover")
+                    self._try_recover()
+                else:
+                    logger.info(
+                        "Worker crashed during call to train(). To attempt to "
+                        "continue training without the failed worker, set "
+                        "`'ignore_worker_failures': True`.")
+                    raise e
+            except Exception as e:
+                time.sleep(0.5)  # allow logs messages to propagate
+                raise e
+            else:
+                break
+        if result is None:
+            raise RuntimeError("Failed to recover from worker crash")
+
+        if (self.config.get("observation_filter", "NoFilter") != "NoFilter"
+                and hasattr(self, "workers")
+                and isinstance(self.workers, WorkerSet)):
+            FilterManager.synchronize(
+                self.workers.local_worker().filters,
+                self.workers.remote_workers(),
+                update_remote=self.config["synchronize_filters"])
+            logger.debug("synchronized filters: {}".format(
+                self.workers.local_worker().filters))
+
+        if self._has_policy_optimizer():
+            result["num_healthy_workers"] = len(
+                self.optimizer.workers.remote_workers())
+
+        if self.config["evaluation_interval"]:
+            if self._iteration % self.config["evaluation_interval"] == 0:
+                evaluation_metrics = self._evaluate()
+                assert isinstance(evaluation_metrics, dict), \
+                    "_evaluate() needs to return a dict."
+                result.update(evaluation_metrics)
+
+        return result
+
+    # def _train(self):
+    #     foo = 1
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, default="PG")
+    parser.add_argument("--policy", type=str, default="PPO")
     parser.add_argument("--use-cnn", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     ray.init(local_mode=args.debug)
     tune_config = {}
 
-    if args.use_cnn:
-        env_cls = SquareConnect4Env
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsCNN)
-        model_config = {
-            'custom_model': 'parametric_actions_model',
-            'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
-            'conv_activation': 'leaky_relu',
-            'fcnet_hiddens': [256, 256],
-            'fcnet_activation': 'leaky_relu',
-        }
-    else:
-        env_cls = Connect4Env
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsMLP)
-        model_config = {
-            'custom_model': 'parametric_actions_model',
-            'fcnet_hiddens': [256, 256],
-            'fcnet_activation': 'leaky_relu',
-        }
+    tune_config.update(get_debug_config(args.debug))
 
+    model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
     obs_space = env.observation_space
     action_space = env.action_space
 
-    if args.debug:
-        tune_config.update({
-            'log_level': 'DEBUG',
-            'num_workers': 1,
-        })
-    else:
-        tune_config.update({
-            'num_workers': 20,
-            'num_gpus': 1,
-            'train_batch_size': 65536,
-            'sgd_minibatch_size': 4096,
-            'num_sgd_iter': 6,
-            'num_envs_per_worker': 32,
-        })
-
+    num_learners = 2
+    policies = get_learner_policy_configs(num_learners, obs_space, action_space, model_config)
     player1, player2 = None, None
-    policies = {
-        'learned1': (None, obs_space, action_space, {'model': model_config}),
-        'learned2': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned3': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned4': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned5': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned6': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned7': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned8': (None, obs_space, action_space, {'model': model_config}),
-    }
 
     def policy_mapping_fn(agent_id):
         global player1, player2
@@ -203,7 +238,7 @@ if __name__ == '__main__':
             return player2
 
 
-    resources = PPOTrainer.default_resource_request(tune_config).to_json()
+    # resources = PPOTrainer.default_resource_request(tune_config).to_json()
     tune.run(
         # MyPPOTrainer,
         my_train_fn,
@@ -211,8 +246,8 @@ if __name__ == '__main__':
         # MyTrainer,
         name='competitive_trg',
         stop={
-            # 'timesteps_total': int(50e3),
-            'timesteps_total': int(100e6),
+            'timesteps_total': int(1e6),
+            # 'timesteps_total': int(100e6),
             # 'timesteps_total': int(1e9),
         },
         config=dict({
@@ -231,8 +266,8 @@ if __name__ == '__main__':
                 }, **policies),
             },
         }, **tune_config),
-        resources_per_trial=resources,
+        # resources_per_trial=resources,
         # checkpoint_freq=100,
-        checkpoint_at_end=True,
+        # checkpoint_at_end=True,
         # resume=True
     )

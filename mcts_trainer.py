@@ -6,20 +6,18 @@ import random
 
 import ray
 from ray import tune
-from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 
-from src.callbacks import on_episode_end
-from src.envs import Connect4Env, SquareConnect4Env
-from src.models import ParametricActionsMLP, ParametricActionsCNN
+from src.callbacks import mcts_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
+from src.utils import get_debug_config, get_model_config
 
 logger = logging.getLogger('ray.rllib')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--policy', type=str, default='PG')
+    parser.add_argument('--policy', type=str, default='PPO')
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--debug', action='store_true')
     parser.add_argument('--save-experience', action='store_true')
@@ -27,25 +25,8 @@ if __name__ == '__main__':
     ray.init(local_mode=args.debug)
     tune_config = {}
 
-    if args.use_cnn:
-        env_cls = SquareConnect4Env
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsCNN)
-        model_config = {
-            'custom_model': 'parametric_actions_model',
-            'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
-            'conv_activation': 'leaky_relu',
-            'fcnet_hiddens': [256, 256],
-            'fcnet_activation': 'leaky_relu',
-        }
-    else:
-        env_cls = Connect4Env
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsMLP)
-        model_config = {
-            'custom_model': 'parametric_actions_model',
-            # 'fcnet_hiddens': [256, 256],
-            'fcnet_hiddens': [128, 128],
-            'fcnet_activation': 'leaky_relu',
-        }
+    tune_config.update(get_debug_config(args.debug))
+    model_config, env_cls = get_model_config(args.use_cnn)
 
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
@@ -56,21 +37,6 @@ if __name__ == '__main__':
         tune_config.update({
             'hiddens': [],
             'dueling': False,
-        })
-
-    if args.debug:
-        tune_config.update({
-            'log_level': 'DEBUG',
-            'num_workers': 1,
-        })
-    else:
-        tune_config.update({
-            'num_workers': 20,
-            'num_gpus': 1,
-            'train_batch_size': 65536,
-            'sgd_minibatch_size': 4096,
-            'num_sgd_iter': 6,
-            'num_envs_per_worker': 32,
         })
 
     if args.save_experience:
@@ -128,7 +94,7 @@ if __name__ == '__main__':
                     'human': (HumanPolicy, obs_space, action_space, {}),
                 },
             },
-            'callbacks': {'on_episode_end': tune.function(on_episode_end)},
+            'callbacks': {'on_episode_end': tune.function(mcts_on_episode_end)},
             # 'evaluation_interval': 100,
             # 'evaluation_num_episodes': 10,
             # 'evaluation_config': {

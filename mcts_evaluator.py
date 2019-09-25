@@ -5,45 +5,25 @@ import logging
 
 import ray
 from ray import tune
-from ray.rllib.models import ModelCatalog
 from ray.tune.registry import register_env
 
-from src.callbacks import on_episode_end
-from src.envs import Connect4Env, SquareConnect4Env
-from src.models import ParametricActionsMLP, ParametricActionsCNN
+from src.callbacks import mcts_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
+from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
 
 logger = logging.getLogger('ray.rllib')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--policy', type=str, default='PG')
+    parser.add_argument('--policy', type=str, default='PPO')
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     ray.init(local_mode=args.debug)
     tune_config = {}
 
-    if args.use_cnn:
-        env_cls = SquareConnect4Env
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsCNN)
-        model_config = {
-            'custom_model': 'parametric_actions_model',
-            'conv_filters': [[16, [2, 2], 1], [32, [2, 2], 1], [64, [3, 3], 2]],
-            'conv_activation': 'leaky_relu',
-            'fcnet_hiddens': [256, 256],
-            'fcnet_activation': 'leaky_relu',
-        }
-    else:
-        env_cls = Connect4Env
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsMLP)
-        model_config = {
-            'custom_model': 'parametric_actions_model',
-            # 'fcnet_hiddens': [256, 256],
-            'fcnet_hiddens': [128, 128],
-            'fcnet_activation': 'leaky_relu',
-        }
+    model_config, env_cls = get_model_config(args.use_cnn)
 
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
@@ -56,21 +36,14 @@ if __name__ == '__main__':
             'dueling': False,
         })
 
-    policies = {
-        'learned1': (None, obs_space, action_space, {'model': model_config}),
-        'learned2': (None, obs_space, action_space, {'model': model_config}),
-        'learned3': (None, obs_space, action_space, {'model': model_config}),
-        'learned4': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned5': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned6': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned7': (None, obs_space, action_space, {'model': model_config}),
-        # 'learned8': (None, obs_space, action_space, {'model': model_config}),
-    }
+    num_learners = 2
+    policies = get_learner_policy_configs(num_learners, obs_space, action_space, model_config)
+    test_policy = 'learned06'
 
     def get_policy_by_time(rollouts_time):
         return {
             'policies_to_train': [*policies],
-            'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'mcts'][agent_id % 2]),
+            'policy_mapping_fn': tune.function(lambda agent_id: [test_policy, 'mcts'][agent_id % 2]),
             'policies': dict({
                 'mcts': (MCTSPolicy, obs_space, action_space, {
                     'max_rollouts': 10000,
@@ -84,7 +57,7 @@ if __name__ == '__main__':
     def get_policy_by_num(num_rollouts):
         return {
             'policies_to_train': [*policies],
-            'policy_mapping_fn': tune.function(lambda agent_id: ['learned3', 'mcts'][agent_id % 2]),
+            'policy_mapping_fn': tune.function(lambda agent_id: [test_policy, 'mcts'][agent_id % 2]),
             'policies': dict({
                 'random': (RandomPolicy, obs_space, action_space, {}),
                 'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts, 'rollouts_timeout': 2.0}),
@@ -130,7 +103,7 @@ if __name__ == '__main__':
 
             # 'multiagent': tune.grid_search([get_policy_by_time(t) for t in mcts_rollout_times]),
             'multiagent': tune.grid_search([get_policy_by_num(n) for n in mcts_num_rollouts]),
-            'callbacks': {'on_episode_end': tune.function(on_episode_end)},
+            'callbacks': {'on_episode_end': tune.function(mcts_on_episode_end)},
             # 'evaluation_interval': 1,
             # 'evaluation_num_episodes': 10,
             # 'evaluation_config': {
@@ -146,6 +119,9 @@ if __name__ == '__main__':
         # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_11-52-59zfekt1j_/checkpoint_79/checkpoint-79',
         # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_12-24-03jjal0_ts/checkpoint_782/checkpoint-782',
         # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-06_14-22-37v_bjhds7/checkpoint_782/checkpoint-782',
-        restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-07_09-42-2148shgivu/checkpoint_7813/checkpoint-7813',
+        # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-07_09-42-2148shgivu/checkpoint_7813/checkpoint-7813',
+        # restore='/home/dave/ray_results/PPO_c4_2019-09-13_15-59-311qrvopuq/checkpoint_1/checkpoint-1',
+        # restore='/home/dave/ray_results/mcts_trainer/PPO_c4_0_2019-09-14_07-14-15ydsrlhcr/checkpoint_241/checkpoint-241',
+        restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782',
         # resume=True
     )
