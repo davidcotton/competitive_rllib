@@ -18,7 +18,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--policy', type=str, default='PPO')
     parser.add_argument('--use-cnn', action='store_true')
-    parser.add_argument("--num-learners", type=int, default=2)
+    parser.add_argument('--num-learners', type=int, default=2)
     # e.g. '/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782'
     parser.add_argument('--restore', type=str)
     # e.g. 'learned06'

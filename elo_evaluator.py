@@ -8,7 +8,6 @@ import ray
 from ray import tune
 from ray.tune.registry import register_env
 
-# from src.callbacks import elo_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config, EloRater
 
@@ -17,8 +16,8 @@ logger = logging.getLogger('ray.rllib')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, default="PPO")
-    parser.add_argument("--num-learners", type=int, default=2)
+    parser.add_argument('--policy', type=str, default='PPO')
+    parser.add_argument('--num-learners', type=int, default=2)
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()

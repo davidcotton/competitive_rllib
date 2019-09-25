@@ -121,9 +121,9 @@ def my_train_fn(config, reporter):
         if timestep > int(1e6):
             break
 
-        # if result["episode_reward_mean"] > 200:
+        # if result['episode_reward_mean'] > 200:
         #     phase = 2
-        # elif result["episode_reward_mean"] > 100:
+        # elif result['episode_reward_mean'] > 100:
         #     phase = 1
         # else:
         #     phase = 0
@@ -151,27 +151,27 @@ class MyTrainer(Trainer):
         """Overrides super.train to synchronize global vars."""
 
         if self._has_policy_optimizer():
-            self.global_vars["timestep"] = self.optimizer.num_steps_sampled
+            self.global_vars['timestep'] = self.optimizer.num_steps_sampled
             self.optimizer.workers.local_worker().set_global_vars(
                 self.global_vars)
             for w in self.optimizer.workers.remote_workers():
                 w.set_global_vars.remote(self.global_vars)
-            logger.debug("updated global vars: {}".format(self.global_vars))
+            logger.debug('updated global vars: {}'.format(self.global_vars))
 
         result = None
         for _ in range(1 + MAX_WORKER_FAILURE_RETRIES):
             try:
                 result = Trainable.train(self)
             except RayError as e:
-                if self.config["ignore_worker_failures"]:
+                if self.config['ignore_worker_failures']:
                     logger.exception(
-                        "Error in train call, attempting to recover")
+                        'Error in train call, attempting to recover')
                     self._try_recover()
                 else:
                     logger.info(
-                        "Worker crashed during call to train(). To attempt to "
-                        "continue training without the failed worker, set "
-                        "`'ignore_worker_failures': True`.")
+                        'Worker crashed during call to train(). To attempt to '
+                        'continue training without the failed worker, set '
+                        '`\'ignore_worker_failures\': True`.')
                     raise e
             except Exception as e:
                 time.sleep(0.5)  # allow logs messages to propagate
@@ -179,27 +179,27 @@ class MyTrainer(Trainer):
             else:
                 break
         if result is None:
-            raise RuntimeError("Failed to recover from worker crash")
+            raise RuntimeError('Failed to recover from worker crash')
 
-        if (self.config.get("observation_filter", "NoFilter") != "NoFilter"
-                and hasattr(self, "workers")
+        if (self.config.get('observation_filter', 'NoFilter') != 'NoFilter'
+                and hasattr(self, 'workers')
                 and isinstance(self.workers, WorkerSet)):
             FilterManager.synchronize(
                 self.workers.local_worker().filters,
                 self.workers.remote_workers(),
-                update_remote=self.config["synchronize_filters"])
-            logger.debug("synchronized filters: {}".format(
+                update_remote=self.config['synchronize_filters'])
+            logger.debug('synchronized filters: {}'.format(
                 self.workers.local_worker().filters))
 
         if self._has_policy_optimizer():
-            result["num_healthy_workers"] = len(
+            result['num_healthy_workers'] = len(
                 self.optimizer.workers.remote_workers())
 
-        if self.config["evaluation_interval"]:
-            if self._iteration % self.config["evaluation_interval"] == 0:
+        if self.config['evaluation_interval']:
+            if self._iteration % self.config['evaluation_interval'] == 0:
                 evaluation_metrics = self._evaluate()
                 assert isinstance(evaluation_metrics, dict), \
-                    "_evaluate() needs to return a dict."
+                    '_evaluate() needs to return a dict.'
                 result.update(evaluation_metrics)
 
         return result
@@ -210,9 +210,10 @@ class MyTrainer(Trainer):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, default="PPO")
-    parser.add_argument("--use-cnn", action="store_true")
-    parser.add_argument("--debug", action="store_true")
+    parser.add_argument('--policy', type=str, default='PPO')
+    parser.add_argument('--use-cnn', action='store_true')
+    parser.add_argument('--num-learners', type=int, default=2)
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     ray.init(local_mode=args.debug)
     tune_config = {}
@@ -224,9 +225,8 @@ if __name__ == '__main__':
     env = env_cls()
     obs_space = env.observation_space
     action_space = env.action_space
+    policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
 
-    num_learners = 2
-    policies = get_learner_policy_configs(num_learners, obs_space, action_space, model_config)
     player1, player2 = None, None
 
     def policy_mapping_fn(agent_id):

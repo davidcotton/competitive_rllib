@@ -14,10 +14,10 @@ logger = logging.getLogger('ray.rllib')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--policy", type=str, default="PPO")
-    parser.add_argument("--num-learners", type=int, default=2)
-    parser.add_argument("--use-cnn", action="store_true")
-    parser.add_argument("--debug", action="store_true")
+    parser.add_argument('--policy', type=str, default='PPO')
+    parser.add_argument('--use-cnn', action='store_true')
+    parser.add_argument('--num-learners', type=int, default=2)
+    parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
     ray.init(local_mode=args.debug)
     tune_config = {}
