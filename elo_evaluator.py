@@ -21,10 +21,9 @@ if __name__ == '__main__':
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    ray.init(local_mode=args.debug)
-    tune_config = {}
 
-    tune_config.update(get_debug_config(args.debug))
+    ray.init(local_mode=args.debug)
+    tune_config = get_debug_config(args.debug)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
