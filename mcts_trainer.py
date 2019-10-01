@@ -42,8 +42,8 @@ if __name__ == '__main__':
         tune_config['output'] = 'experience'
 
     player1, player2 = None, None
-    policies = ['learned1', 'mcts']
-    # policies = ['learned1', 'human']
+    policies = ['learned00', 'mcts']
+    # policies = ['learned00', 'human']
 
     def policy_mapping_fn(agent_id):
         global player1, player2
@@ -57,12 +57,16 @@ if __name__ == '__main__':
         args.policy,
         name='mcts_trainer',
         stop={
-            # 'policy_reward_mean': {'learned1': 0.95},
-            'policy_reward_mean': {'learned1': 0.8},
+            # 'policy_reward_mean': {'learned00': 0.95},
+            'policy_reward_mean': {'learned00': 0.8},
         },
         config=dict({
             'env': 'c4',
-            'env_config': {},
+            'env_config': {
+                'reward_win': 1.0,
+                'reward_draw': 0.0,
+                'reward_lose': -1.0,
+            },
             'lr': 0.001,
             'gamma': 0.995,
             'lambda': 0.95,
@@ -75,7 +79,7 @@ if __name__ == '__main__':
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'human'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['mcts', 'human'][agent_id % 2]),
                 'policies': {
-                    'learned1': (None, obs_space, action_space, {'model': model_config}),
+                    'learned00': (None, obs_space, action_space, {'model': model_config}),
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'mcts': (MCTSPolicy, obs_space, action_space, {
                         # 'max_rollouts': 10000,
@@ -85,10 +89,10 @@ if __name__ == '__main__':
                         # 'rollouts_timeout': 0.5,  # ~1k rollouts/action
                         # 'rollouts_timeout': 1.0,  # ~2k rollouts/action
                         'rollouts_timeout': 1.0,
-                        'max_rollouts': 32,
+                        # 'max_rollouts': 32,
                         # 'max_rollouts': 64,
                         # 'max_rollouts': 96,
-                        # 'max_rollouts': 128,
+                        'max_rollouts': 128,
                     }),
                     'human': (HumanPolicy, obs_space, action_space, {}),
                 },
