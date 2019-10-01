@@ -5,7 +5,6 @@ from gym import spaces
 import numpy as np
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 
-
 # default game config, can be overridden in `env_config`
 BOARD_HEIGHT = 6
 BOARD_WIDTH = 7
@@ -156,15 +155,15 @@ class SquareConnect4Env(Connect4Env):
 class Connect4:
     def __init__(self, env_config=None, game_state=None) -> None:
         super().__init__()
-        self.env_config = env_config or {}
-        self.env_config['board_height'] = self.env_config.get('board_height', BOARD_HEIGHT)
-        self.env_config['board_width'] = self.env_config.get('board_width', BOARD_WIDTH)
-        self.env_config['win_length'] = self.env_config.get('win_length', WIN_LENGTH)
-        self.env_config['reward_win'] = self.env_config.get('reward_win', REWARD_WIN)
-        self.env_config['reward_draw'] = self.env_config.get('reward_draw', REWARD_DRAW)
-        self.env_config['reward_lose'] = self.env_config.get('reward_lose', REWARD_LOSE)
-        self.env_config['reward_step'] = self.env_config.get('reward_step', REWARD_STEP)
-
+        self.env_config = dict({
+            'board_height': BOARD_HEIGHT,
+            'board_width': BOARD_WIDTH,
+            'win_length': WIN_LENGTH,
+            'reward_win': REWARD_WIN,
+            'reward_draw': REWARD_DRAW,
+            'reward_lose': REWARD_LOSE,
+            'reward_step': REWARD_STEP,
+        }, **env_config or {})
         self.player = 1  # players: [0, 1]
         self.bitboard = [0, 0]  # bitboard for each player
         # the four different win condition directions to bitshift over:
