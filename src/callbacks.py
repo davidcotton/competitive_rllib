@@ -22,7 +22,7 @@ def win_matrix_on_episode_end(info):
     """
     env = info['env'].envs[0]
     agent_ids = [int(agent[1][-2:]) for agent in info['episode'].agent_rewards.keys()]
-    agent_perms = [f'win({perm})' for perm in itertools.permutations(agent_ids)]
+    agent_perms = [f'win{perm}' for perm in itertools.permutations(agent_ids)]
     rewards = tuple(info['episode'].agent_rewards.values())
     for ids, reward in zip(agent_perms, rewards):
         if reward == env.reward_win:
