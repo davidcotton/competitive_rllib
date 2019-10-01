@@ -105,6 +105,18 @@ class Connect4Env(MultiAgentEnv):
             mask[-1] = 1
         return mask
 
+    @property
+    def reward_win(self):
+        return self.game.reward_win
+
+    @property
+    def reward_lose(self):
+        return self.game.reward_lose
+
+    @property
+    def reward_draw(self):
+        return self.game.reward_draw
+
 
 class FlattenedConnect4Env(Connect4Env):
     def __init__(self, env_config=None) -> None:
