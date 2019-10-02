@@ -58,7 +58,8 @@ if __name__ == '__main__':
         name='mcts_trainer',
         stop={
             # 'policy_reward_mean': {'learned00': 0.95},
-            'policy_reward_mean': {'learned00': 0.8},
+            # 'policy_reward_mean': {'learned00': 0.8},  # ray==0.7.3
+            'policy_reward_mean/learned00': 0.8,  # ray==0.7.5
         },
         config=dict({
             'env': 'c4',
