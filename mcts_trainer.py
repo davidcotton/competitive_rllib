@@ -62,21 +62,17 @@ if __name__ == '__main__':
         },
         config=dict({
             'env': 'c4',
-            'env_config': {
-                'reward_win': 1.0,
-                'reward_draw': 0.0,
-                'reward_lose': -1.0,
-            },
+            'env_config': {},
             'lr': 0.001,
             'gamma': 0.995,
             'lambda': 0.95,
             'clip_param': 0.2,
             # 'kl_coeff': 1.0,
             'multiagent': {
-                'policies_to_train': ['learned1'],
+                'policies_to_train': ['learned00'],
                 'policy_mapping_fn': tune.function(policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'mcts'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned1', 'human'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned00', 'mcts'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned00', 'human'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda agent_id: ['mcts', 'human'][agent_id % 2]),
                 'policies': {
                     'learned00': (None, obs_space, action_space, {'model': model_config}),
