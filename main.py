@@ -50,9 +50,8 @@ if __name__ == '__main__':
         args.policy,
         name='main',
         stop={
-            # 'timesteps_total': int(500e3),
-            'timesteps_total': int(2e9),
-            # 'timesteps_total': int(100e6),
+            'timesteps_total': int(100e6),
+            # 'timesteps_total': int(1e9),
         },
         config=dict({
             'env': 'c4',
@@ -77,7 +76,7 @@ if __name__ == '__main__':
             },
         }, **tune_config),
         # checkpoint_freq=100,
-        checkpoint_at_end=True,
+        # checkpoint_at_end=True,
         # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
         # resume=True,
     )
