@@ -19,9 +19,9 @@ if __name__ == '__main__':
     parser.add_argument('--policy', type=str, default='PPO')
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--num-learners', type=int, default=2)
-    # e.g. '/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782'
+    # e.g. --restore="/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782"
     parser.add_argument('--restore', type=str)
-    # e.g. 'learned06'
+    # e.g. --eval-policy=learned06
     parser.add_argument('--eval-policy', type=str)
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
@@ -34,23 +34,17 @@ if __name__ == '__main__':
     env = env_cls()
     obs_space = env.observation_space
     action_space = env.action_space
-    policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
-
-    if args.policy == 'DQN':
-        tune_config.update({
-            'hiddens': [],
-            'dueling': False,
-        })
+    trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
 
     def get_policy_by_num(num_rollouts):
         return {
-            'policies_to_train': [*policies],
+            'policies_to_train': [*trainable_policies],
             'policy_mapping_fn': tune.function(lambda agent_id: [args.eval_policy, 'mcts'][agent_id % 2]),
             'policies': dict({
                 'random': (RandomPolicy, obs_space, action_space, {}),
                 'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts, 'rollouts_timeout': 2.0}),
                 'human': (HumanPolicy, obs_space, action_space, {}),
-            }, **policies),
+            }, **trainable_policies),
         }
     mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
     # mcts_num_rollouts = [128, 256, 512, 1024, 2048]
@@ -88,5 +82,4 @@ if __name__ == '__main__':
             # },
         }, **tune_config),
         restore=args.restore,
-        # resume=True
     )
