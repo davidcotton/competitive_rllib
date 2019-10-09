@@ -27,8 +27,7 @@ if __name__ == '__main__':
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg, bdt))
     env = env_cls(bandit=bdt)
-    obs_space = env.observation_space
-    action_space = env.action_space
+    obs_space, action_space = env.observation_space, env.action_space
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
 
     tune.run(

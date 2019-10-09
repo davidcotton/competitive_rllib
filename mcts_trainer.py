@@ -29,8 +29,7 @@ if __name__ == '__main__':
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
-    obs_space = env.observation_space
-    action_space = env.action_space
+    obs_space, action_space = env.observation_space, env.action_space
 
     if args.policy == 'DQN':
         tune_config.update({
