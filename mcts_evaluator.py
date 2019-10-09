@@ -39,7 +39,8 @@ if __name__ == '__main__':
     def get_policy_by_num(num_rollouts):
         return {
             'policies_to_train': [*trainable_policies],
-            'policy_mapping_fn': tune.function(lambda agent_id: [args.eval_policy, 'mcts'][agent_id % 2]),
+            # 'policy_mapping_fn': tune.function(lambda agent_id: [args.eval_policy, 'mcts'][agent_id % 2]),
+            'policy_mapping_fn': tune.function(lambda _: (args.eval_policy, 'mcts')),
             'policies': dict({
                 'random': (RandomPolicy, obs_space, action_space, {}),
                 'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts, 'rollouts_timeout': 2.0}),
