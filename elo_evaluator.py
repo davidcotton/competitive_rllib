@@ -63,7 +63,6 @@ if __name__ == '__main__':
         args.policy,
         name='elo_evaluator',
         stop={
-            # 'episodes_total': 1000,
             'timesteps_total': int(100e6),
         },
         config=dict({
@@ -95,4 +94,5 @@ if __name__ == '__main__':
         }, **tune_config),
         # restore='/home/dave/ray_results/mcts_trainer/PPO_c4_0_2019-09-14_07-14-15ydsrlhcr/checkpoint_241/checkpoint-241',
         # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782',
+        checkpoint_at_end=True,
     )
