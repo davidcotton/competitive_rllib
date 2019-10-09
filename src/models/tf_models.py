@@ -23,17 +23,6 @@ class ParametricActionsMLP(DistributionalQModel, TFModelV2):
         original_space = obs_space.original_space['board']
         flat_obs_space = spaces.Box(low=np.min(original_space.low), high=np.max(original_space.high),
                                     shape=(np.prod(original_space.shape),))
-
-        logger.debug('\n\n########## ParametricActionsMLP.init() ##########')
-        logger.debug('obs_space:%s' % obs_space)
-        logger.debug('obs_space.original_space:%s' % obs_space.original_space)
-        logger.debug('flat_obs_space:%s' % flat_obs_space)
-        logger.debug('action_space:%s' % action_space)
-        logger.debug('num_outputs:%s' % num_outputs)
-        logger.debug('model_config:%s' % model_config)
-        logger.debug('kwargs:%s' % kwargs)
-        logger.debug('\n')
-
         self.mlp = FullyConnectedNetwork(flat_obs_space, action_space, num_outputs, model_config, name)
         self.register_variables(self.mlp.variables())
 
@@ -60,16 +49,6 @@ class ParametricActionsCNN(DistributionalQModel, TFModelV2):
         self.is_conv = bool(conv_filters)
         orig_shape = obs_space.original_space['board']
         new_shape = orig_shape.shape + (1,) if self.is_conv else (np.prod(orig_shape.shape),)
-
-        logger.debug('\n\n########## ParametricActionsCNN.init() ##########')
-        logger.debug('obs_space:%s' % obs_space)
-        logger.debug('new_shape:%s' % str(new_shape))
-        logger.debug('action_space:%s' % action_space)
-        logger.debug('num_outputs:%s' % num_outputs)
-        logger.debug('model_config:%s' % model_config)
-        logger.debug('kwargs:%s' % kwargs)
-        logger.debug('\n')
-
         self.inputs = tf.keras.layers.Input(shape=new_shape, name='observations')
         last_layer = self.inputs
 
