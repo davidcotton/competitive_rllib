@@ -22,7 +22,7 @@ if __name__ == '__main__':
     tune_config = get_debug_config(args.debug)
 
     Exp3Bandit = ray.remote(Exp3Bandit)
-    bdt = Exp3Bandit.remote(args.num_learners)
+    bdt = Exp3Bandit.remote(args.num_learners, 0.07)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg, bdt))

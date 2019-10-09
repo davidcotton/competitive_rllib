@@ -29,7 +29,7 @@ class Exp3Bandit:
         return policy_ids
 
     def update(self, episode_id, reward) -> None:
-        assert 0 <= reward <= 1
+        assert 0 <= reward <= 1, print('Bandit update reward: %s' % reward)
         reward -= np.mean(self.weights)  # stop the weights blowing up
         arm, _ = self.actions.pop(episode_id)
         probs = self._make_distribution(self.weights)
