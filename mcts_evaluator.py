@@ -1,7 +1,6 @@
 """Evaluate a trained agent against different MCTS strengths."""
 
 import argparse
-import logging
 
 import ray
 from ray import tune
@@ -10,8 +9,6 @@ from ray.tune.registry import register_env
 from src.callbacks import mcts_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
-
-logger = logging.getLogger('ray.rllib')
 
 
 if __name__ == '__main__':
