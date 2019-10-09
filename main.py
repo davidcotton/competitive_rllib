@@ -6,6 +6,7 @@ import ray
 from ray import tune
 from ray.tune.registry import register_env
 
+from src.callbacks import win_matrix_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
 
@@ -74,9 +75,12 @@ if __name__ == '__main__':
                     'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': 1000, 'rollouts_timeout': 2.0}),
                 }, **policies),
             },
+            'callbacks': {
+                'on_episode_end': tune.function(win_matrix_on_episode_end),
+            },
         }, **tune_config),
         # checkpoint_freq=100,
-        # checkpoint_at_end=True,
-        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
+        checkpoint_at_end=True,
         # resume=True,
+        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
     )
