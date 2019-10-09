@@ -1,16 +1,13 @@
 import argparse
-import logging
-import random
 
 import ray
 from ray import tune
 from ray.tune.registry import register_env
 
-from src.callbacks import win_matrix_on_episode_end
+from src.bandits import Exp3Bandit
+from src.callbacks import bandit_on_episode_start, bandit_policy_mapping_fn, bandit_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
-
-logger = logging.getLogger('ray.rllib')
 
 
 if __name__ == '__main__':
@@ -24,44 +21,33 @@ if __name__ == '__main__':
     ray.init(local_mode=args.debug)
     tune_config = get_debug_config(args.debug)
 
+    Exp3Bandit = ray.remote(Exp3Bandit)
+    bdt = Exp3Bandit.remote(args.num_learners)
+
     model_config, env_cls = get_model_config(args.use_cnn)
-    register_env('c4', lambda cfg: env_cls(cfg))
-    env = env_cls()
+    register_env('c4', lambda cfg: env_cls(cfg, bdt))
+    env = env_cls(bandit=bdt)
     obs_space = env.observation_space
     action_space = env.action_space
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
-
-    if args.policy == 'DQN':
-        tune_config.update({
-            'hiddens': [],
-            'dueling': False,
-        })
-
-    def random_policy_mapping_fn(info):
-        return random.sample([*trainable_policies], k=2)
 
     tune.run(
         args.policy,
         name='main',
         stop={
             'timesteps_total': int(100e6),
-            # 'timesteps_total': int(1e9),
         },
         config=dict({
             'env': 'c4',
             'env_config': {},
             'lr': 0.001,
             'gamma': 0.995,
-            # 'gamma': 0.9,
-            # 'gamma': tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99, 0.999, 0.9999, 1.0]),
             'clip_param': 0.2,
             'lambda': 0.95,
             # 'kl_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
-                'policy_mapping_fn': tune.function(random_policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'random'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda _: 'random'),
+                'policy_mapping_fn': tune.function(bandit_policy_mapping_fn),
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
@@ -69,11 +55,10 @@ if __name__ == '__main__':
                 }, **trainable_policies),
             },
             'callbacks': {
-                'on_episode_end': tune.function(win_matrix_on_episode_end),
+                'on_episode_start': tune.function(bandit_on_episode_start),
+                'on_episode_end': tune.function(bandit_on_episode_end),
             },
         }, **tune_config),
-        # checkpoint_freq=100,
         checkpoint_at_end=True,
         # resume=True,
-        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
     )

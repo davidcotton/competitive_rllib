@@ -41,25 +41,19 @@ if __name__ == '__main__':
     if args.save_experience:
         tune_config['output'] = 'experience'
 
-    player1, player2 = None, None
     policies = ['learned00', 'mcts']
     # policies = ['learned00', 'human']
 
-    def policy_mapping_fn(agent_id):
-        global player1, player2
-        if agent_id == 0:
-            player1, player2 = random.sample(policies, k=2)
-            return player1
-        else:
-            return player2
+    def random_policy_mapping_fn(info):
+        return random.sample(policies, k=2)
 
     tune.run(
         args.policy,
         name='mcts_trainer',
         stop={
             # 'policy_reward_mean': {'learned00': 0.95},
-            # 'policy_reward_mean': {'learned00': 0.8},  # ray==0.7.3
-            'policy_reward_mean/learned00': 0.8,  # ray==0.7.5
+            'policy_reward_mean': {'learned00': 0.8},  # ray==0.7.3
+            # 'policy_reward_mean/learned00': 0.8,  # ray==0.7.5
         },
         config=dict({
             'env': 'c4',
@@ -71,10 +65,7 @@ if __name__ == '__main__':
             # 'kl_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': ['learned00'],
-                'policy_mapping_fn': tune.function(policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned00', 'mcts'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned00', 'human'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['mcts', 'human'][agent_id % 2]),
+                'policy_mapping_fn': tune.function(random_policy_mapping_fn),
                 'policies': {
                     'learned00': (None, obs_space, action_space, {'model': model_config}),
                     'random': (RandomPolicy, obs_space, action_space, {}),
@@ -102,9 +93,6 @@ if __name__ == '__main__':
             #     'entropy_coeff_schedule': None,
             # },
         }, **tune_config),
-        # checkpoint_freq=10,
         checkpoint_at_end=True,
-        # restore='/home/dave/ray_results/selfplay/PPO_c4_0_2019-08-30_20-15-16tvle8xqv/checkpoint_13486/checkpoint-13486',
-        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
         # resume=True
     )

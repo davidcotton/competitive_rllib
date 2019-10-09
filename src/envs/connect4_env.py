@@ -18,8 +18,9 @@ REWARD_STEP = 0.0
 class Connect4Env(MultiAgentEnv):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, env_config=None) -> None:
+    def __init__(self, env_config=None, bandit=None) -> None:
         super().__init__()
+        self.bandit = bandit
         self.game = Connect4(env_config)
         board_height = self.game.board_height
         board_width = self.game.board_width
@@ -45,7 +46,6 @@ class Connect4Env(MultiAgentEnv):
                 'player_id': np.array([i]),
             } for i in range(2)
         }
-
         return obs_dict
 
     def step(self, action_dict):

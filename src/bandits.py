@@ -15,8 +15,6 @@ class Exp3Bandit:
         self.lookup = {i: v for i, v in enumerate(list(permutations(range(num_agents), r=2)))}
         self.weights = [1.0] * len(self.lookup)
         self.actions = {}
-        self.awaiting = {}
-        self.updated = 0
 
     def select(self, episode_id) -> tuple:
         if episode_id not in self.actions:
@@ -24,17 +22,10 @@ class Exp3Bandit:
             arm = self._categorical_draw(probs)
             p1, p2 = self.lookup[arm]
             self.actions[episode_id] = arm, (p1, p2)
-        return self.actions[episode_id][1]
+        policy_ids = self.actions[episode_id][1]
+        return policy_ids
 
     def update(self, episode_id, reward) -> None:
-        self.awaiting[episode_id] = reward
-        to_update = [ep_id for ep_id in self.awaiting.keys() if ep_id in self.actions]
-        for episode_id in to_update:
-            reward = self.awaiting.pop(episode_id)
-            self._update(episode_id, reward)
-            self.updated += 1
-
-    def _update(self, episode_id, reward) -> None:
         assert 0 <= reward <= 1
         arm, _ = self.actions.pop(episode_id)
         probs = self._make_distribution(self.weights, self.gamma)
@@ -42,16 +33,11 @@ class Exp3Bandit:
         # self.weights[arm] *= math.exp((self.gamma / self.num_arms) * x)
         self.weights[arm] *= math.exp(x * self.gamma / self.num_arms)
 
-    def check_queue(self, info):
-        self.actions.clear()  # clear unfinished episodes
-
-    @staticmethod
-    def _make_distribution(weights, gamma):
+    def _make_distribution(self, weights, gamma):
         sum_weights = sum(weights)
         return [(1 - gamma) * (w / sum_weights) + (gamma / len(weights)) for w in weights]
 
-    @staticmethod
-    def _categorical_draw(probs):
+    def _categorical_draw(self, probs):
         # z = random.random()
         z = random.uniform(0, sum(probs))
         cumulative_probs = 0.0
@@ -61,4 +47,5 @@ class Exp3Bandit:
                 return i
         return len(probs) - 1
 
-
+    def get_weights(self):
+        return self.weights

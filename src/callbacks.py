@@ -1,6 +1,8 @@
 import itertools
+import random
 
 import numpy as np
+import ray
 
 
 def mcts_on_episode_end(info):
@@ -34,3 +36,32 @@ def win_matrix_on_episode_end(info):
         else:
             raise ValueError('Invalid reward')
         info['episode'].custom_metrics[ids] = value
+
+
+def random_policy_mapping_fn(info):
+    trainable_policies = info['user_data']['trainable_policies']
+    return random.sample(trainable_policies, k=2)
+
+
+def bandit_on_episode_start(info):
+    episode = info['episode']
+    episode.user_data['env'] = info['env'].get_unwrapped()[0]
+
+
+def bandit_policy_mapping_fn(info):
+    bandit = info['user_data']['env'].bandit
+    future = bandit.select.remote(info['episode_id'])
+    policy_ids = ray.get(future)
+    policy_names = tuple([f'learned{pid:02d}' for pid in policy_ids])
+    return policy_names
+
+
+def bandit_on_episode_end(info):
+    episode = info['episode']
+    reward = (42 - episode.length) / 42
+    bandit = info['env'].get_unwrapped()[0].bandit
+    bandit.update.remote(episode.episode_id, reward)
+    bandit_weights = ray.get(bandit.get_weights.remote())
+    for i, w in enumerate(bandit_weights):
+        episode.custom_metrics[f'bandit({i})'] = w
+    foo = 1
