@@ -58,10 +58,7 @@ def bandit_policy_mapping_fn(info):
 
 def bandit_on_episode_end(info):
     episode = info['episode']
-    reward = (42 - episode.length) / 42
+    reward = (35 - episode.length) / 35  # 35 = max_steps (42) - min_steps (7)
     bandit = info['env'].get_unwrapped()[0].bandit
     bandit.update.remote(episode.episode_id, reward)
-    bandit_weights = ray.get(bandit.get_weights.remote())
-    for i, w in enumerate(bandit_weights):
-        episode.custom_metrics[f'bandit({i})'] = w
-    foo = 1
+    episode.custom_metrics.update(ray.get(bandit.get_probs.remote()))
