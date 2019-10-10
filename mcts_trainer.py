@@ -85,12 +85,6 @@ if __name__ == '__main__':
                 },
             },
             'callbacks': {'on_episode_end': tune.function(mcts_on_episode_end)},
-            # 'evaluation_interval': 100,
-            # 'evaluation_num_episodes': 10,
-            # 'evaluation_config': {
-            #     'entropy_coeff': 0.0,  # just copy in defaults to trick Trainer._evaluate()
-            #     'entropy_coeff_schedule': None,
-            # },
         }, **tune_config),
         checkpoint_at_end=True,
         # resume=True
