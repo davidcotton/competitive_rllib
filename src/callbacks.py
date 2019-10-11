@@ -5,7 +5,7 @@ import numpy as np
 import ray
 
 
-def mcts_on_episode_end(info):
+def mcts_metrics_on_episode_end(info):
     """Add custom metrics to track MCTS rollouts.
 
     :param info: A dictionary of callback info.

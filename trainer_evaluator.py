@@ -5,7 +5,7 @@ import ray
 from ray import tune
 from ray.tune.registry import register_env
 
-from src.callbacks import win_matrix_on_episode_end, mcts_on_episode_end, mcts_eval_policy_mapping_fn, \
+from src.callbacks import win_matrix_on_episode_end, mcts_metrics_on_episode_end, mcts_eval_policy_mapping_fn, \
     random_policy_mapping_fn
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_model_config, get_learner_policy_configs, get_mcts_policy_configs
@@ -70,7 +70,7 @@ if __name__ == '__main__':
             'callbacks': {
                 'on_episode_start': tune.function(on_episode_start),
                 # 'on_episode_end': tune.function(win_matrix_on_episode_end),
-                # 'on_episode_end': tune.function(mcts_on_episode_end),
+                # 'on_episode_end': tune.function(mcts_metrics_on_episode_end),
             },
             'evaluation_interval': 1,
             'evaluation_num_episodes': 10,
@@ -79,7 +79,7 @@ if __name__ == '__main__':
                 'callbacks': {
                     # 'on_episode_start': tune.function(on_episode_start),
                     # 'on_episode_end': tune.function(win_matrix_on_episode_end),
-                    'on_episode_end': tune.function(mcts_on_episode_end),
+                    'on_episode_end': tune.function(mcts_metrics_on_episode_end),
                 },
             },
         }, **tune_config),

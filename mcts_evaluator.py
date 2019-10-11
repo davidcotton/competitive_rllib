@@ -6,7 +6,7 @@ import ray
 from ray import tune
 from ray.tune.registry import register_env
 
-from src.callbacks import mcts_on_episode_end
+from src.callbacks import mcts_metrics_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
 
@@ -67,7 +67,7 @@ if __name__ == '__main__':
             'clip_param': 0.2,
             # 'kl_coeff': 1.0,
             'multiagent': tune.grid_search([get_policy_by_num(n) for n in mcts_num_rollouts]),
-            'callbacks': {'on_episode_end': tune.function(mcts_on_episode_end)},
+            'callbacks': {'on_episode_end': tune.function(mcts_metrics_on_episode_end)},
             # 'evaluation_interval': 1,
             # 'evaluation_num_episodes': 10,
             # 'evaluation_config': {

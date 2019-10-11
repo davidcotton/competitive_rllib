@@ -8,7 +8,7 @@ import ray
 from ray import tune
 from ray.tune.registry import register_env
 
-from src.callbacks import mcts_on_episode_end
+from src.callbacks import mcts_metrics_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_model_config
 
@@ -84,7 +84,7 @@ if __name__ == '__main__':
                     'human': (HumanPolicy, obs_space, action_space, {}),
                 },
             },
-            'callbacks': {'on_episode_end': tune.function(mcts_on_episode_end)},
+            'callbacks': {'on_episode_end': tune.function(mcts_metrics_on_episode_end)},
         }, **tune_config),
         checkpoint_at_end=True,
         # resume=True
