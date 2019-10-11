@@ -4,6 +4,7 @@ from ray.rllib.models import ModelCatalog
 
 from src.envs import Connect4Env, SquareConnect4Env
 from src.models import ParametricActionsMLP, ParametricActionsCNN
+from src.policies import MCTSPolicy
 
 
 def get_debug_config(is_debugging):
@@ -68,15 +69,26 @@ def get_model_config(use_cnn, fc_hiddens=None, fc_activation=None, conv_filters=
 
 
 def get_learner_policy_configs(num_learners, obs_space, action_space, model_config):
-    """Build a dictionary of learner policy configuration.
+    """Build a dictionary of learner policy configurations.
 
     :param num_learners: The number of policy configurations to generate.
     :param obs_space: The environment observation space.
     :param action_space: The environment action space.
     :param model_config: The learner neural network configuration.
-    :return:
+    :return: A dict of trainable policy configs, e.g. {policy_key: policy_constructor_params}
     """
     return {f'learned{i:02d}': (None, obs_space, action_space, {'model': model_config}) for i in range(num_learners)}
+
+
+def get_mcts_policy_configs(rollouts, obs_space, action_space):
+    """Build a dictionary of MCTS opponent policy configurations.
+
+    :param rollouts: A list of integers for each MCTS rollout.
+    :param obs_space: The environment observation space.
+    :param action_space: The environment action space.
+    :return: A dict of MCTS policy configs, e.g. {policy_key: policy_constructor_params}
+    """
+    return {f'mcts{i:03d}': (MCTSPolicy, obs_space, action_space, {'max_rollouts': i}) for i in rollouts}
 
 
 class EloRater:

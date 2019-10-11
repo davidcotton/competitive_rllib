@@ -43,6 +43,14 @@ def random_policy_mapping_fn(info):
     return random.sample(trainable_policies, k=2)
 
 
+def mcts_eval_policy_mapping_fn(info):
+    trainable_policies = info['user_data']['trainable_policies']
+    mcts_policies = info['user_data']['mcts_policies']
+    eval_policies = [random.choice(trainable_policies), random.choice(mcts_policies)]
+    random.shuffle(eval_policies)
+    return eval_policies
+
+
 def bandit_on_episode_start(info):
     episode = info['episode']
     episode.user_data['env'] = info['env'].get_unwrapped()[0]
