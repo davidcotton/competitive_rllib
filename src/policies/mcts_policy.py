@@ -1,4 +1,3 @@
-import logging
 import random
 import time
 
@@ -7,20 +6,20 @@ from ray.rllib.policy.policy import Policy
 
 from src.envs import Connect4
 
-logger = logging.getLogger('ray.rllib')
+
+DEFAULT_MAX_ROLLOUTS = 128
+DEFAULT_ROLLOUTS_TIMEOUT = 1.0
 
 
 class MCTSPolicy(Policy):
-    """Monte-Carlo Tree Search."""
+    """A vanilla Monte-Carlo Tree Search policy."""
 
     def __init__(self, observation_space, action_space, config) -> None:
         super().__init__(observation_space, action_space, config)
-        policy_config = config['multiagent']['policies']['mcts']
-        obs_space = policy_config[1]
-        self.board_shape = obs_space['board'].shape
-        self.board_size = np.prod(obs_space['board'].shape)
-        self.max_rollouts = policy_config[3]['max_rollouts']
-        self.rollouts_timeout = policy_config[3]['rollouts_timeout']
+        self.board_shape = observation_space.original_space['board'].shape
+        self.board_size = np.prod(observation_space.original_space['board'].shape)
+        self.max_rollouts = config.get('max_rollouts', DEFAULT_MAX_ROLLOUTS)
+        self.rollouts_timeout = config.get('rollouts_timeout', DEFAULT_ROLLOUTS_TIMEOUT)
         self.metrics = {'num_rollouts': []}
 
     def compute_actions(self,
@@ -84,11 +83,11 @@ class MCTSPolicy(Policy):
         pass
 
 
-def mcts(current_state: Connect4, max_rollouts=10000, rollouts_timeout=100):
-    assert max_rollouts > 0, 'MCTS `max_rollouts` must be a positive integer'
+def mcts(current_state: Connect4, max_rollouts, rollouts_timeout):
+    assert int(max_rollouts) > 0, 'MCTS `max_rollouts` must be a positive integer'
     root = Node(state=current_state)
     start = time.clock()
-    for i in range(max_rollouts):
+    for i in range(int(max_rollouts)):
         node = root
         state = current_state.clone()
 
@@ -121,7 +120,7 @@ def mcts(current_state: Connect4, max_rollouts=10000, rollouts_timeout=100):
         return x.wins / x.visits
 
     sorted_children = sorted(root.children, key=score)[::-1]
-    metrics = {'num_rollouts': i}
+    metrics = {'num_rollouts': i + 1}  # "i+1" to count from 1
 
     return sorted_children[0].move, metrics
 
