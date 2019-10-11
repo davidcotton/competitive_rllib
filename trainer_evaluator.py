@@ -79,7 +79,7 @@ if __name__ == '__main__':
                 'callbacks': {
                     # 'on_episode_start': tune.function(on_episode_start),
                     # 'on_episode_end': tune.function(win_matrix_on_episode_end),
-                    'on_episode_end': tune.function(mcts_metrics_on_episode_end),
+                    # 'on_episode_end': tune.function(mcts_metrics_on_episode_end),
                 },
             },
         }, **tune_config),
