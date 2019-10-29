@@ -7,15 +7,20 @@ from src.models import ParametricActionsMLP, ParametricActionsCNN
 from src.policies import MCTSPolicy
 
 
-def get_debug_config(is_debugging):
+def get_debug_config(args):
     """When debugging use a single worker otherwise app is too slow and hard to debug.
 
-    :param is_debugging: Whether we are in debugging mode.
+    :param args: Command line arguments
     :return: Tune configuration.
     """
-    if is_debugging:
+    if args.debug:
         return {
             'log_level': 'DEBUG',
+            'num_workers': 1,
+        }
+    elif args.human:
+        # if human player, keep it single env
+        return {
             'num_workers': 1,
         }
     else:

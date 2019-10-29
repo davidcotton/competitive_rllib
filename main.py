@@ -8,7 +8,7 @@ from ray.tune.registry import register_env
 
 from src.callbacks import win_matrix_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
-from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
+from src.utils import get_debug_config, get_learner_policy_configs, get_mcts_policy_configs, get_model_config
 
 logger = logging.getLogger('ray.rllib')
 
@@ -18,17 +18,21 @@ if __name__ == '__main__':
     parser.add_argument('--policy', type=str, default='PPO')
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--num-learners', type=int, default=2)
+    # e.g. --restore="/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782"
+    parser.add_argument('--restore', type=str)
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--human', action='store_true')
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args.debug)
+    tune_config = get_debug_config(args)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
     obs_space, action_space = env.observation_space, env.action_space
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
+    mcts_policies = get_mcts_policy_configs([8, 16, 32, 64, 128], obs_space, action_space)
 
     if args.policy == 'DQN':
         tune_config.update({
@@ -37,7 +41,15 @@ if __name__ == '__main__':
         })
 
     def random_policy_mapping_fn(info):
-        return random.sample([*trainable_policies], k=2)
+        if args.human:
+            return random.sample(['learned00', 'human'], k=2)
+        elif args.num_learners == 1:
+            return ['learned00', 'learned00']
+        else:
+            return random.sample([*trainable_policies], k=2)
+
+
+    policy_mapping_fn = random_policy_mapping_fn if args.num_learners > 1 else lambda _: ('learned00', 'learned00')
 
     tune.run(
         args.policy,
@@ -59,20 +71,21 @@ if __name__ == '__main__':
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': tune.function(random_policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'random'][agent_id % 2]),
+                # 'policy_mapping_fn': tune.function(policy_mapping_fn),
+                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'human'][agent_id % 2]),
                 # 'policy_mapping_fn': tune.function(lambda _: 'random'),
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
-                    'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': 1000, 'rollouts_timeout': 2.0}),
-                }, **trainable_policies),
+                    # 'mcts': (MCTSPolicy, obs_space, action_space, {}),
+                }, **trainable_policies, **mcts_policies),
             },
-            'callbacks': {
-                'on_episode_end': tune.function(win_matrix_on_episode_end),
-            },
+            # 'callbacks': {
+            #     'on_episode_end': tune.function(win_matrix_on_episode_end),
+            # },
         }, **tune_config),
         # checkpoint_freq=100,
         checkpoint_at_end=True,
         # resume=True,
-        # restore='/home/dave/ray_results_old/mcts_trainer/PPO_c4_0_2019-09-03_21-50-47nggyraoy/checkpoint_453/checkpoint-453',
+        restore=args.restore,
     )
