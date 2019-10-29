@@ -13,7 +13,6 @@ from ray.rllib.agents.ppo.ppo_policy import PPOTFPolicy, KLCoeffMixin, ValueNetw
 from ray.rllib.agents.trainer import Trainer, MAX_WORKER_FAILURE_RETRIES
 from ray.rllib.agents.trainer_template import build_trainer
 from ray.rllib.evaluation.worker_set import WorkerSet
-from ray.rllib.models import ModelCatalog
 from ray.rllib.policy.tf_policy import LearningRateSchedule, EntropyCoeffSchedule
 from ray.rllib.policy.tf_policy_template import build_tf_policy
 from ray.rllib.utils import FilterManager
@@ -21,8 +20,7 @@ from ray.rllib.utils.annotations import override, PublicAPI
 from ray.tune.trainable import Trainable
 from ray.tune.registry import register_env
 
-from src.envs import Connect4Env, SquareConnect4Env
-from src.models import ParametricActionsMLP, ParametricActionsCNN
+from src.bandits import Exp3Bandit
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config
 
@@ -53,86 +51,6 @@ MyPPOTrainer = build_trainer(
     validate_config=validate_config,
     after_optimizer_step=update_kl,
     after_train_result=warn_about_bad_reward_scales)
-
-
-active_policy = None
-trainable_policies = []
-threshold = 0.7
-trainer_updates = []
-
-
-def my_train_fn(config, reporter):
-    global trainable_policies, active_policy, trainer_updates
-
-    # ppo_trainer = MyPPOTrainer(env='c4', config=config)
-    ppo_trainer = PPOTrainer(env='c4', config=config)
-
-    # trainable_policies = ppo_trainer.workers.foreach_worker(lambda w: w.policies_to_train)[0][:]
-    # trainable_policies = ppo_trainer.workers.foreach_worker(
-    #     lambda w: w.foreach_trainable_policy(lambda p, i: (i, p))
-    # )
-
-    while True:
-        result = ppo_trainer.train()
-        reporter(**result)
-
-        timestep = result['timesteps_total']
-        # print('\n')
-        # print('$$$$$$$$$$$$$$$$$$$$$$$')
-        # print('timestep: {:,}'.format(timestep))
-        # print('trainable_policies: %s' % trainable_policies)
-        # if active_policy is None and timestep > int(5e6):
-        # # if active_policy is None and timestep > int(25e4):
-        #     active_policy = trainable_policies[0]
-        #     # ppo_trainer.workers.foreach_worker(
-        #     #     lambda w: w.foreach_trainable_policy(lambda p, i: (i, p))
-        #     # )
-        #     ppo_trainer.workers.foreach_worker(
-        #         lambda w: w.policies_to_train.remove(trainable_policies[1])
-        #     )
-        #     trainer_updates.append(timestep)
-        # elif active_policy == trainable_policies[0] \
-        #         and result['policy_reward_mean'][trainable_policies[0]] > threshold:
-        #     active_policy = trainable_policies[1]
-        #     ppo_trainer.workers.foreach_worker(
-        #         lambda w: w.policies_to_train.remove(trainable_policies[0])
-        #     )
-        #     ppo_trainer.workers.foreach_worker(
-        #         lambda w: w.policies_to_train.append(trainable_policies[1])
-        #     )
-        #     trainer_updates.append(timestep)
-        # elif active_policy == trainable_policies[1] \
-        #         and result['policy_reward_mean'][trainable_policies[1]] > threshold:
-        #     active_policy = trainable_policies[0]
-        #     ppo_trainer.workers.foreach_worker(
-        #         lambda w: w.policies_to_train.remove(trainable_policies[1])
-        #     )
-        #     ppo_trainer.workers.foreach_worker(
-        #         lambda w: w.policies_to_train.append(trainable_policies[0])
-        #     )
-        #     trainer_updates.append(timestep)
-        #
-        # print('active_policy: %s' % active_policy)
-        # print('worker TPs: %s' % ppo_trainer.workers.foreach_worker(lambda w: w.policies_to_train)[0])
-        # print('trainer updates: %s' % '\n  - ' + '\n  - '.join('{:,}'.format(tu) for tu in trainer_updates))
-        # print('$$$$$$$$$$$$$$$$$$$$$$$')
-        # print('\n')
-
-        if timestep > int(1e6):
-            break
-
-        # if result['episode_reward_mean'] > 200:
-        #     phase = 2
-        # elif result['episode_reward_mean'] > 100:
-        #     phase = 1
-        # else:
-        #     phase = 0
-        # ppo_trainer.workers.foreach_worker(
-        #     lambda ev: ev.foreach_env(
-        #         lambda env: env.set_phase(phase)))
-
-    ppo_trainer.save()
-    ppo_trainer.stop()
 
 
 class MyTrainable(Trainable):
@@ -215,28 +133,105 @@ if __name__ == '__main__':
     parser.add_argument('--num-learners', type=int, default=2)
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
-    ray.init(local_mode=args.debug)
-    tune_config = {}
 
-    tune_config.update(get_debug_config(args.debug))
+    ray.init(local_mode=args.debug)
+    tune_config = get_debug_config(args.debug)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
-    obs_space = env.observation_space
-    action_space = env.action_space
-    policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
+    obs_space, action_space = env.observation_space, env.action_space
+    trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
 
-    player1, player2 = None, None
+    def random_policy_mapping_fn(episode_id):
+        return random.sample([*trainable_policies], k=2)
 
-    def policy_mapping_fn(agent_id):
-        global player1, player2
-        if agent_id == 0:
-            player1, player2 = random.sample([*policies], k=2)
-            return player1
-        else:
-            return player2
+    def my_train_fn(config, reporter):
+        active_policy = None
+        threshold = 0.7
+        trainer_updates = []
 
+        # ppo_trainer = MyPPOTrainer(env='c4', config=config)
+        ppo_trainer = PPOTrainer(env='c4', config=config)
+        bandit = Exp3Bandit(len(trainable_policies))
+
+        def func(worker):
+            worker.sampler.policy_mapping_fn = tune.function(learned_vs_random_mapping_fn)
+            foo = 1
+
+        # ppo_trainer.workers.foreach_worker(lambda w: w.sampler.policy_mapping_fn)
+        ppo_trainer.workers.foreach_worker(func)
+
+        # trainable_policies = ppo_trainer.workers.foreach_worker(lambda w: w.policies_to_train)[0][:]
+        # trainable_policies = ppo_trainer.workers.foreach_worker(
+        #     lambda w: w.foreach_trainable_policy(lambda p, i: (i, p))
+        # )
+
+        while True:
+            result = ppo_trainer.train()
+            reporter(**result)
+
+            foo = 1
+
+            timestep = result['timesteps_total']
+            training_iteration = result['training_iteration']
+            # print('\n')
+            # print('$$$$$$$$$$$$$$$$$$$$$$$')
+            # print('timestep: {:,}'.format(timestep))
+            # print('trainable_policies: %s' % trainable_policies)
+            # if active_policy is None and timestep > int(5e6):
+            # # if active_policy is None and timestep > int(25e4):
+            #     active_policy = trainable_policies[0]
+            #     # ppo_trainer.workers.foreach_worker(
+            #     #     lambda w: w.foreach_trainable_policy(lambda p, i: (i, p))
+            #     # )
+            #     ppo_trainer.workers.foreach_worker(
+            #         lambda w: w.policies_to_train.remove(trainable_policies[1])
+            #     )
+            #     trainer_updates.append(timestep)
+            # elif active_policy == trainable_policies[0] \
+            #         and result['policy_reward_mean'][trainable_policies[0]] > threshold:
+            #     active_policy = trainable_policies[1]
+            #     ppo_trainer.workers.foreach_worker(
+            #         lambda w: w.policies_to_train.remove(trainable_policies[0])
+            #     )
+            #     ppo_trainer.workers.foreach_worker(
+            #         lambda w: w.policies_to_train.append(trainable_policies[1])
+            #     )
+            #     trainer_updates.append(timestep)
+            # elif active_policy == trainable_policies[1] \
+            #         and result['policy_reward_mean'][trainable_policies[1]] > threshold:
+            #     active_policy = trainable_policies[0]
+            #     ppo_trainer.workers.foreach_worker(
+            #         lambda w: w.policies_to_train.remove(trainable_policies[1])
+            #     )
+            #     ppo_trainer.workers.foreach_worker(
+            #         lambda w: w.policies_to_train.append(trainable_policies[0])
+            #     )
+            #     trainer_updates.append(timestep)
+            #
+            # print('active_policy: %s' % active_policy)
+            # print('worker TPs: %s' % ppo_trainer.workers.foreach_worker(lambda w: w.policies_to_train)[0])
+            # print('trainer updates: %s' % '\n  - ' + '\n  - '.join('{:,}'.format(tu) for tu in trainer_updates))
+            # print('$$$$$$$$$$$$$$$$$$$$$$$')
+            # print('\n')
+
+            # if timestep > int(1e6):
+            # if training_iteration >= 20:
+            #     break
+
+            # if result['episode_reward_mean'] > 200:
+            #     phase = 2
+            # elif result['episode_reward_mean'] > 100:
+            #     phase = 1
+            # else:
+            #     phase = 0
+            # ppo_trainer.workers.foreach_worker(
+            #     lambda ev: ev.foreach_env(
+            #         lambda env: env.set_phase(phase)))
+
+        state = ppo_trainer.save()
+        ppo_trainer.stop()
 
     # resources = PPOTrainer.default_resource_request(tune_config).to_json()
     tune.run(
@@ -246,7 +241,8 @@ if __name__ == '__main__':
         # MyTrainer,
         name='competitive_trg',
         stop={
-            'timesteps_total': int(1e6),
+            'training_iteration': 2,
+            # 'timesteps_total': int(1e6),
             # 'timesteps_total': int(100e6),
             # 'timesteps_total': int(1e9),
         },
@@ -257,13 +253,16 @@ if __name__ == '__main__':
             'lambda': 0.95,
             'clip_param': 0.2,
             'multiagent': {
-                'policies_to_train': [*policies],
-                'policy_mapping_fn': tune.function(policy_mapping_fn),
+                'policies_to_train': [*trainable_policies],
+                'policy_mapping_fn': tune.function(random_policy_mapping_fn),
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
                     'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': 1000, 'rollouts_timeout': 2.0}),
-                }, **policies),
+                }, **trainable_policies),
+            },
+            'callbacks': {
+                # 'on_episode_start': tune.function(on_episode_start),
             },
         }, **tune_config),
         # resources_per_trial=resources,
