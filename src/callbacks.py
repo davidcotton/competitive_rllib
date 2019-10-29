@@ -44,9 +44,8 @@ def random_policy_mapping_fn(info):
 
 
 def mcts_eval_policy_mapping_fn(info):
-    trainable_policies = info['user_data']['trainable_policies']
-    mcts_policies = info['user_data']['mcts_policies']
-    eval_policies = [random.choice(trainable_policies), random.choice(mcts_policies)]
+    user_data = info['user_data']
+    eval_policies = [random.choice(user_data['trainable_policies']), random.choice(user_data['mcts_policies'])]
     random.shuffle(eval_policies)
     return eval_policies
 
