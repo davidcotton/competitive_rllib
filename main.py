@@ -51,9 +51,14 @@ if __name__ == '__main__':
 
     policy_mapping_fn = random_policy_mapping_fn if args.num_learners > 1 else lambda _: ('learned00', 'learned00')
 
+    def name_trial(trial):
+        """Give trials a more readable name in terminal & Tensorboard."""
+        return f'{args.num_learners}x{trial.trainable_name}'
+
     tune.run(
         args.policy,
         name='main',
+        trial_name_creator=name_trial,
         stop={
             'timesteps_total': int(100e6),
             # 'timesteps_total': int(1e9),
@@ -74,11 +79,12 @@ if __name__ == '__main__':
                 # 'policy_mapping_fn': policy_mapping_fn,
                 # 'policy_mapping_fn': lambda agent_id: ['learned', 'human'][agent_id % 2],
                 # 'policy_mapping_fn': lambda _: 'random',
-                'policies': dict({
-                    'random': (RandomPolicy, obs_space, action_space, {}),
+                'policies': {
+                    **trainable_policies,
+                    **mcts_policies,
                     'human': (HumanPolicy, obs_space, action_space, {}),
-                    # 'mcts': (MCTSPolicy, obs_space, action_space, {}),
-                }, **trainable_policies, **mcts_policies),
+                    'random': (RandomPolicy, obs_space, action_space, {}),
+                },
             },
             # 'callbacks': {
             #     'on_episode_end': win_matrix_on_episode_end,

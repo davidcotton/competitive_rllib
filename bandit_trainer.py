@@ -48,11 +48,12 @@ if __name__ == '__main__':
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': bandit_policy_mapping_fn,
-                'policies': dict({
-                    'random': (RandomPolicy, obs_space, action_space, {}),
+                'policies': {
+                    **trainable_policies,
+                    'mcts': (MCTSPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
-                    'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': 1000, 'rollouts_timeout': 2.0}),
-                }, **trainable_policies),
+                    'random': (RandomPolicy, obs_space, action_space, {}),
+                },
             },
             'callbacks': {
                 'on_episode_start': bandit_on_episode_start,

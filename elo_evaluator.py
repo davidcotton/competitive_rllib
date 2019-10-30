@@ -74,11 +74,12 @@ if __name__ == '__main__':
             'multiagent': {
                 'policies_to_train': [*policies],
                 'policy_mapping_fn': policy_mapping_fn,
-                'policies': dict({
-                    'random': (RandomPolicy, obs_space, action_space, {}),
-                    'human': (HumanPolicy, obs_space, action_space, {}),
+                'policies': {
+                    **policies,
                     'mcts': (MCTSPolicy, obs_space, action_space, {}),
-                }, **policies),
+                    'human': (HumanPolicy, obs_space, action_space, {}),
+                    'random': (RandomPolicy, obs_space, action_space, {}),
+                },
             },
             'callbacks': {'on_episode_end': elo_on_episode_end},
         }, **tune_config),

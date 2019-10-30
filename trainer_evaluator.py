@@ -27,12 +27,8 @@ if __name__ == '__main__':
     env = env_cls()
     obs_space, action_space = env.observation_space, env.action_space
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
-    # mcts_policies = get_mcts_policy_configs([64, 128, 256, 512], obs_space, action_space)
-    # mcts_policies = get_mcts_policy_configs([64, 128, 256], obs_space, action_space)
-    # mcts_policies = get_mcts_policy_configs([32, 64], obs_space, action_space)
-    # mcts_policies = get_mcts_policy_configs([8, 16, 32, 64], obs_space, action_space)
-    mcts_eval_policies = get_mcts_policy_configs([8, 16], obs_space, action_space)
-    # mcts_policies = get_mcts_policy_configs([1, 2], obs_space, action_space)
+    mcts_eval_rollouts = [8, 16]
+    mcts_eval_policies = get_mcts_policy_configs(mcts_eval_rollouts, obs_space, action_space)
     mcts_train_policies = get_mcts_policy_configs([8, 16, 32, 64, 128, 256, 512], obs_space, action_space)
 
     def on_episode_start(info):
@@ -71,9 +67,11 @@ if __name__ == '__main__':
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': policy_mapping_fn,
                 'policies': {
-                    'random': (RandomPolicy, obs_space, action_space, {}),
+                    **trainable_policies,
+                    **mcts_train_policies,
                     'human': (HumanPolicy, obs_space, action_space, {}),
-                    **trainable_policies, **mcts_train_policies},
+                    'random': (RandomPolicy, obs_space, action_space, {}),
+                },
             },
             'callbacks': {
                 'on_episode_start': on_episode_start,

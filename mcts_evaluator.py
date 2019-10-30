@@ -38,11 +38,12 @@ if __name__ == '__main__':
             'policies_to_train': [*trainable_policies],
             # 'policy_mapping_fn': lambda agent_id: [args.eval_policy, 'mcts'][agent_id % 2],
             'policy_mapping_fn': lambda _: (args.eval_policy, 'mcts'),
-            'policies': dict({
-                'random': (RandomPolicy, obs_space, action_space, {}),
+            'policies': {
+                **trainable_policies,
                 'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts}),
                 'human': (HumanPolicy, obs_space, action_space, {}),
-            }, **trainable_policies),
+                'random': (RandomPolicy, obs_space, action_space, {}),
+            },
         }
     mcts_num_rollouts = [4, 8, 16, 32, 64, 128, 256, 512]
     # mcts_num_rollouts = [128, 256, 512, 1024, 2048]
