@@ -16,10 +16,11 @@ if __name__ == '__main__':
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--num-learners', type=int, default=2)
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--human', action='store_true')
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args.debug)
+    tune_config = get_debug_config(args)
 
     Exp3Bandit = ray.remote(Exp3Bandit)
     bdt = Exp3Bandit.remote(args.num_learners, 0.07)
@@ -46,7 +47,7 @@ if __name__ == '__main__':
             # 'kl_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
-                'policy_mapping_fn': tune.function(bandit_policy_mapping_fn),
+                'policy_mapping_fn': bandit_policy_mapping_fn,
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
@@ -54,8 +55,8 @@ if __name__ == '__main__':
                 }, **trainable_policies),
             },
             'callbacks': {
-                'on_episode_start': tune.function(bandit_on_episode_start),
-                'on_episode_end': tune.function(bandit_on_episode_end),
+                'on_episode_start': bandit_on_episode_start,
+                'on_episode_end': bandit_on_episode_end,
             },
         }, **tune_config),
         checkpoint_at_end=True,

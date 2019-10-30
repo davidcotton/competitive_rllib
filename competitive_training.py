@@ -135,7 +135,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args.debug)
+    tune_config = get_debug_config(args)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
@@ -156,7 +156,7 @@ if __name__ == '__main__':
         bandit = Exp3Bandit(len(trainable_policies))
 
         def func(worker):
-            worker.sampler.policy_mapping_fn = tune.function(learned_vs_random_mapping_fn)
+            worker.sampler.policy_mapping_fn = learned_vs_random_mapping_fn
             foo = 1
 
         # ppo_trainer.workers.foreach_worker(lambda w: w.sampler.policy_mapping_fn)
@@ -254,7 +254,7 @@ if __name__ == '__main__':
             'clip_param': 0.2,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
-                'policy_mapping_fn': tune.function(random_policy_mapping_fn),
+                'policy_mapping_fn': random_policy_mapping_fn,
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
@@ -262,7 +262,7 @@ if __name__ == '__main__':
                 }, **trainable_policies),
             },
             'callbacks': {
-                # 'on_episode_start': tune.function(on_episode_start),
+                # 'on_episode_start': on_episode_start,
             },
         }, **tune_config),
         # resources_per_trial=resources,

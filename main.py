@@ -70,10 +70,10 @@ if __name__ == '__main__':
             # 'kl_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
-                'policy_mapping_fn': tune.function(random_policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(policy_mapping_fn),
-                # 'policy_mapping_fn': tune.function(lambda agent_id: ['learned', 'human'][agent_id % 2]),
-                # 'policy_mapping_fn': tune.function(lambda _: 'random'),
+                'policy_mapping_fn': random_policy_mapping_fn,
+                # 'policy_mapping_fn': policy_mapping_fn,
+                # 'policy_mapping_fn': lambda agent_id: ['learned', 'human'][agent_id % 2],
+                # 'policy_mapping_fn': lambda _: 'random',
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 }, **trainable_policies, **mcts_policies),
             },
             # 'callbacks': {
-            #     'on_episode_end': tune.function(win_matrix_on_episode_end),
+            #     'on_episode_end': win_matrix_on_episode_end,
             # },
         }, **tune_config),
         # checkpoint_freq=100,

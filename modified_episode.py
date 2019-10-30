@@ -9,7 +9,7 @@ def policy_for(self, agent_id=_DUMMY_AGENT_ID):
     """
 
     if self.episode_id not in self._agent_to_policy:
-        map_fn_data = {'episode_id': self.episode_id, 'env': self.user_data['env']}
+        map_fn_data = {'episode_id': self.episode_id, 'user_data': self.user_data}
         self._agent_to_policy[self.episode_id] = self._policy_mapping_fn(map_fn_data)
     return self._agent_to_policy[self.episode_id][agent_id]
 

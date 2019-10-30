@@ -19,10 +19,11 @@ if __name__ == '__main__':
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--num-learners', type=int, default=4)
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--human', action='store_true')
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args.debug)
+    tune_config = get_debug_config(args)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
@@ -88,7 +89,7 @@ if __name__ == '__main__':
     tune.run(
         my_train_fn,
         name='main',
-        trial_name_creator=tune.function(name_trial),
+        trial_name_creator=name_trial,
         stop={
             # 'timesteps_total': int(100e6) * args.num_learners,
             'timesteps_total': int(1e9),
@@ -104,16 +105,16 @@ if __name__ == '__main__':
             'vf_loss_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
-                'policy_mapping_fn': tune.function(random_policy_mapping_fn),
+                'policy_mapping_fn': random_policy_mapping_fn,
                 'policies': {**trainable_policies, **mcts_policies},
             },
             'callbacks': {
-                'on_episode_start': tune.function(on_episode_start),
-                # 'on_episode_end': tune.function(win_matrix_on_episode_end),
+                'on_episode_start': on_episode_start,
+                # 'on_episode_end': win_matrix_on_episode_end,
             },
             'evaluation_interval': 1 if args.debug else 10,
             'evaluation_num_episodes': 10 if args.debug else 1,
-            'evaluation_config': {'multiagent': {'policy_mapping_fn': tune.function(mcts_eval_policy_mapping_fn)}},
+            'evaluation_config': {'multiagent': {'policy_mapping_fn': mcts_eval_policy_mapping_fn}},
         }, **tune_config),
         # checkpoint_freq=250,
         # checkpoint_at_end=True,

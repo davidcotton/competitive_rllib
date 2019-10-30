@@ -50,7 +50,7 @@ if __name__ == '__main__':
     tune.run(
         args.policy,
         name='trainer_evaluator',
-        trial_name_creator=tune.function(name_trial),
+        trial_name_creator=name_trial,
         stop={
             # 'timesteps_total': int(10e6),
             'timesteps_total': int(100e6),
@@ -69,19 +69,19 @@ if __name__ == '__main__':
             'entropy_coeff': 0.01,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
-                'policy_mapping_fn': tune.function(policy_mapping_fn),
+                'policy_mapping_fn': policy_mapping_fn,
                 'policies': {
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
                     **trainable_policies, **mcts_train_policies},
             },
             'callbacks': {
-                'on_episode_start': tune.function(on_episode_start),
+                'on_episode_start': on_episode_start,
             },
             'evaluation_interval': 10,
             # 'evaluation_num_episodes': 1,
             'evaluation_num_episodes': 1 if args.debug else math.ceil(args.num_learners / 2),
-            'evaluation_config': {'multiagent': {'policy_mapping_fn': tune.function(mcts_eval_policy_mapping_fn)}},
+            'evaluation_config': {'multiagent': {'policy_mapping_fn': mcts_eval_policy_mapping_fn}},
         }, **tune_config),
         checkpoint_at_end=True,
     )

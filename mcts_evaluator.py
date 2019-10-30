@@ -21,10 +21,11 @@ if __name__ == '__main__':
     # e.g. --eval-policy=learned06
     parser.add_argument('--eval-policy', type=str)
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--human', action='store_true')
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args.debug)
+    tune_config = get_debug_config(args)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
@@ -35,11 +36,11 @@ if __name__ == '__main__':
     def get_policy_by_num(num_rollouts):
         return {
             'policies_to_train': [*trainable_policies],
-            # 'policy_mapping_fn': tune.function(lambda agent_id: [args.eval_policy, 'mcts'][agent_id % 2]),
-            'policy_mapping_fn': tune.function(lambda _: (args.eval_policy, 'mcts')),
+            # 'policy_mapping_fn': lambda agent_id: [args.eval_policy, 'mcts'][agent_id % 2],
+            'policy_mapping_fn': lambda _: (args.eval_policy, 'mcts'),
             'policies': dict({
                 'random': (RandomPolicy, obs_space, action_space, {}),
-                'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts, 'rollouts_timeout': 2.0}),
+                'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': num_rollouts}),
                 'human': (HumanPolicy, obs_space, action_space, {}),
             }, **trainable_policies),
         }
@@ -54,7 +55,7 @@ if __name__ == '__main__':
     tune.run(
         args.policy,
         name='mcts_evaluator',
-        trial_name_creator=tune.function(name_trial),
+        trial_name_creator=name_trial,
         stop={
             'episodes_total': 1000,
         },
@@ -67,16 +68,7 @@ if __name__ == '__main__':
             'clip_param': 0.2,
             # 'kl_coeff': 1.0,
             'multiagent': tune.grid_search([get_policy_by_num(n) for n in mcts_num_rollouts]),
-            'callbacks': {'on_episode_end': tune.function(mcts_metrics_on_episode_end)},
-            # 'evaluation_interval': 1,
-            # 'evaluation_num_episodes': 10,
-            # 'evaluation_config': {
-            #     # 'entropy_coeff': 0.0,  # just copy in defaults to trick Trainer._evaluate()
-            #     # 'entropy_coeff_schedule': None,
-            #     # 'rollouts_timeout': 0.5
-            #     'exploration_fraction': 0,
-            #     'exploration_final_eps': 0.5,
-            # },
+            'callbacks': {'on_episode_end': mcts_metrics_on_episode_end},
         }, **tune_config),
         restore=args.restore,
     )

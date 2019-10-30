@@ -1,7 +1,6 @@
 """Evaluate a trained agent against different MCTS strengths."""
 
 import argparse
-import logging
 import random
 
 import ray
@@ -11,8 +10,6 @@ from ray.tune.registry import register_env
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_model_config, EloRater
 
-logger = logging.getLogger('ray.rllib')
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -20,10 +17,13 @@ if __name__ == '__main__':
     parser.add_argument('--num-learners', type=int, default=2)
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--debug', action='store_true')
+    # e.g. --restore="/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782"
+    parser.add_argument('--restore', type=str)
+    parser.add_argument('--human', action='store_true')
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args.debug)
+    tune_config = get_debug_config(args)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
@@ -73,25 +73,15 @@ if __name__ == '__main__':
             'clip_param': 0.2,
             'multiagent': {
                 'policies_to_train': [*policies],
-                'policy_mapping_fn': tune.function(policy_mapping_fn),
+                'policy_mapping_fn': policy_mapping_fn,
                 'policies': dict({
                     'random': (RandomPolicy, obs_space, action_space, {}),
                     'human': (HumanPolicy, obs_space, action_space, {}),
-                    'mcts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': 1000, 'rollouts_timeout': 2.0}),
+                    'mcts': (MCTSPolicy, obs_space, action_space, {}),
                 }, **policies),
             },
-            'callbacks': {'on_episode_end': tune.function(elo_on_episode_end)},
-            # 'evaluation_interval': 1,
-            # 'evaluation_num_episodes': 10,
-            # 'evaluation_config': {
-            #     # 'entropy_coeff': 0.0,  # just copy in defaults to trick Trainer._evaluate()
-            #     # 'entropy_coeff_schedule': None,
-            #     # 'rollouts_timeout': 0.5
-            #     'exploration_fraction': 0,
-            #     'exploration_final_eps': 0.5,
-            # },
+            'callbacks': {'on_episode_end': elo_on_episode_end},
         }, **tune_config),
-        # restore='/home/dave/ray_results/mcts_trainer/PPO_c4_0_2019-09-14_07-14-15ydsrlhcr/checkpoint_241/checkpoint-241',
-        # restore='/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782',
+        restore=args.restore,
         checkpoint_at_end=True,
     )
