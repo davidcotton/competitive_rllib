@@ -7,7 +7,7 @@ from ray import tune
 from ray.tune.registry import register_env
 
 from src.callbacks import win_matrix_on_episode_end
-from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
+from src.policies import HumanPolicy, RandomPolicy
 from src.utils import get_debug_config, get_learner_policy_configs, get_mcts_policy_configs, get_model_config
 
 logger = logging.getLogger('ray.rllib')
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     env = env_cls()
     obs_space, action_space = env.observation_space, env.action_space
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
-    mcts_policies = get_mcts_policy_configs([8, 16, 32, 64, 128], obs_space, action_space)
+    mcts_policies = get_mcts_policy_configs([8, 16, 32, 64, 128, 256, 512], obs_space, action_space)
 
     if args.policy == 'DQN':
         tune_config.update({

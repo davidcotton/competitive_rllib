@@ -6,6 +6,7 @@ from ray import tune
 from ray.tune.registry import register_env
 
 from src.callbacks import mcts_eval_policy_mapping_fn, random_policy_mapping_fn
+from src.policies import HumanPolicy, RandomPolicy
 from src.utils import get_debug_config, get_model_config, get_learner_policy_configs, get_mcts_policy_configs
 
 
@@ -51,6 +52,7 @@ if __name__ == '__main__':
         name='trainer_evaluator',
         trial_name_creator=tune.function(name_trial),
         stop={
+            # 'timesteps_total': int(10e6),
             'timesteps_total': int(100e6),
             # 'timesteps_total': int(1e9),
         },
@@ -68,7 +70,10 @@ if __name__ == '__main__':
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': tune.function(policy_mapping_fn),
-                'policies': {**trainable_policies, **mcts_train_policies},
+                'policies': {
+                    'random': (RandomPolicy, obs_space, action_space, {}),
+                    'human': (HumanPolicy, obs_space, action_space, {}),
+                    **trainable_policies, **mcts_train_policies},
             },
             'callbacks': {
                 'on_episode_start': tune.function(on_episode_start),
