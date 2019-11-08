@@ -63,8 +63,10 @@ class Connect4Env(MultiAgentEnv):
 
         try:
             assert self.game.is_valid_move(column)
-        except BaseException:
-            raise ValueError('Invalid action, column %s is full' % column)
+        except Exception as e:
+            print('Invalid action, column %s is full' % column)
+            print(self.get_state(player))
+            raise e
 
         self.game.move(column)
         self.boards[0][self.game.column_counts[column] - 1][column] = self.game.player + 1
