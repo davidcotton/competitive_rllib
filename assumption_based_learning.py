@@ -13,7 +13,7 @@ from ray.rllib.policy.tf_policy_template import build_tf_policy
 from ray.rllib.utils import try_import_tf
 
 from src.policies import HumanPolicy, RandomPolicy
-from src.utils import get_worker_config, get_learner_policy_configs, get_mcts_policy_configs, get_model_config
+from src.utils import get_worker_config, get_mcts_policy_configs, get_model_config
 
 tf = try_import_tf()
 
@@ -60,7 +60,7 @@ class AssistMixin:
                 value, attempts = self.get_value(obs, action)
                 if attempts < 0 and value < -0.99:
                     flattened_obs[action] = 0  # mask the action
-                    print('assist masked action: %s, value: %s, attempts: %s' % (action, value, attempts))
+                    # print('assist masked action: %s, value: %s, attempts: %s' % (action, value, attempts))
                 if value > 0.999:
                     reshaped_obs = obs.reshape((6, 7))
                     action_override.update({
@@ -69,9 +69,6 @@ class AssistMixin:
                         'attempts': attempts,
                         'obs': reshaped_obs
                     })
-                    # action_override = action
-                    # print(reshaped_obs)
-                    # print('best_value', value, 'action_override', action, 'best_attempts', attempts)
             action_overrides.append(action_override)
 
         # 2) compute neural network actions
@@ -85,9 +82,9 @@ class AssistMixin:
             # is_overridden = action_override is not None
             is_overridden = 'action' in action_override
             if is_overridden:
-                print('replaced action: %s with %s' % (actions[i], action_override['action']))
-                print(action_override['obs'])
-                print('value:', action_override['value'], 'attempts:', action_override['attempts'])
+                # print('replaced action: %s with %s' % (actions[i], action_override['action']))
+                # print(action_override['obs'])
+                # print('value:', action_override['value'], 'attempts:', action_override['attempts'])
                 actions[i] = action_override['action']
             actions_info['action_overridden'].append(int(is_overridden))
         actions_info['action_overridden'] = np.array(actions_info['action_overridden'])
@@ -104,7 +101,7 @@ class AssistMixin:
             if obs[7] == 1:
                 continue  # skip "pass action" (other player's turn)
             obs = obs[8:50]
-            reshaped_obs = obs.reshape((6, 7))
+            # reshaped_obs = obs.reshape((6, 7))
             action = sample_batch[SampleBatch.ACTIONS][i]
             # reward = sample_batch[SampleBatch.REWARDS][i]
             value, attempts = self.get_value(obs, action)
