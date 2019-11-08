@@ -9,7 +9,7 @@ from ray.tune.registry import register_env
 
 from src.callbacks import mcts_metrics_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
-from src.utils import get_debug_config, get_model_config
+from src.utils import get_worker_config, get_model_config
 
 
 if __name__ == '__main__':
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ray.init(local_mode=args.debug)
-    tune_config = get_debug_config(args)
+    tune_config = get_worker_config(args)
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))

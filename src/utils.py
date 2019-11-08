@@ -7,7 +7,7 @@ from src.models import ParametricActionsMLP, ParametricActionsCNN
 from src.policies import MCTSPolicy
 
 
-def get_debug_config(args):
+def get_worker_config(args):
     """When debugging use a single worker otherwise app is too slow and hard to debug.
 
     :param args: Command line arguments
@@ -23,7 +23,8 @@ def get_debug_config(args):
         return {
             'num_workers': 1,
         }
-    else:
+    elif args.policy == 'PPO':
+        # scale right up for PPO
         return {
             'num_workers': 20,
             'num_gpus': 1,
@@ -31,6 +32,11 @@ def get_debug_config(args):
             'sgd_minibatch_size': 4096,
             'num_sgd_iter': 6,
             'num_envs_per_worker': 32,
+        }
+    else:
+        return {
+            'num_workers': 1,
+            'num_gpus': 1,
         }
 
 
