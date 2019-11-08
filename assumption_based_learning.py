@@ -240,8 +240,6 @@ if __name__ == '__main__':
         },
         config=dict({
             'env': 'c4',
-            'lr': 0.001,
-            'gamma': 0.995,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': random_policy_mapping_fn,
