@@ -1,167 +1,14 @@
 import argparse
 import random
 
-import numpy as np
 import ray
 from ray import tune
 from ray.tune.registry import register_env
-from ray.rllib.agents.dqn.distributional_q_model import DistributionalQModel
-from ray.rllib.agents.ppo.ppo_policy import ppo_surrogate_loss, kl_and_loss_stats, vf_preds_and_logits_fetches, \
-    postprocess_ppo_gae, clip_gradients, KLCoeffMixin, ValueNetworkMixin, LearningRateSchedule, EntropyCoeffSchedule
-from ray.rllib.policy.sample_batch import SampleBatch
-from ray.rllib.policy.tf_policy_template import build_tf_policy
-from ray.rllib.utils import try_import_tf
 
 from src.policies import HumanPolicy, RandomPolicy
+from src.policies.assumption.assumption_dqn_policy import AssumptionDQNTFPolicy
+from src.policies.assumption.assumption_ppo_policy import AssumptionPPOTFPolicy
 from src.utils import get_worker_config, get_mcts_policy_configs, get_model_config
-
-tf = try_import_tf()
-
-
-class AssistMixin:
-    def __init__(self) -> None:
-        self.memory = {}
-
-    def compute_actions(self,
-                        obs_batches,
-                        state_batches,
-                        prev_action_batch=None,
-                        prev_reward_batch=None,
-                        info_batch=None,
-                        episodes=None,
-                        **kwargs):
-        """Select actions to take from a batch of observations.
-
-        :param obs_batches: A batch of observations.
-        :param state_batches: A list of RNN state, if any.
-        :param prev_action_batch: Previous action values, if any.
-        :param prev_reward_batch: Previous reward, if any.
-        :param info_batch: Info object, if any.
-        :param episodes: The episode state.
-        :param kwargs:
-        :return: A tuple containing:
-            a list of actions to take,
-            a list of RNN state and,
-            a dict of info.
-        """
-
-        # 1) compute assisted actions
-        action_overrides = []
-        for flattened_obs in obs_batches:
-            if flattened_obs[7] == 1:
-                action_overrides.append({})
-                continue  # skip other player's turn
-            action_mask = flattened_obs[:8]
-            obs = flattened_obs[8:50]
-            action_override = {}
-            for action, action_available in enumerate(action_mask[:-1]):
-                if action_available == 0:
-                    continue  # skip masked actions
-                value, attempts = self.get_value(obs, action)
-                if attempts < 0 and value < -0.99:
-                    flattened_obs[action] = 0  # mask the action
-                    # print('assist masked action: %s, value: %s, attempts: %s' % (action, value, attempts))
-                if value > 0.999:
-                    reshaped_obs = obs.reshape((6, 7))
-                    action_override.update({
-                        'action': action,
-                        'value': value,
-                        'attempts': attempts,
-                        'obs': reshaped_obs
-                    })
-            action_overrides.append(action_override)
-
-        # 2) compute neural network actions
-        fetches = super().compute_actions(obs_batches, state_batches, prev_action_batch, prev_reward_batch, info_batch,
-                                          episodes, **kwargs)
-        actions, state_outs, actions_info = fetches
-
-        # 3) merge/compare assisted actions
-        actions_info['action_overridden'] = []
-        for i, action_override in enumerate(action_overrides):
-            # is_overridden = action_override is not None
-            is_overridden = 'action' in action_override
-            if is_overridden:
-                # print('replaced action: %s with %s' % (actions[i], action_override['action']))
-                # print(action_override['obs'])
-                # print('value:', action_override['value'], 'attempts:', action_override['attempts'])
-                actions[i] = action_override['action']
-            actions_info['action_overridden'].append(int(is_overridden))
-        actions_info['action_overridden'] = np.array(actions_info['action_overridden'])
-
-        return actions, state_outs, actions_info
-
-    def update_assist(self, sample_batch, other_agent_batches, episode):
-        if episode is None:  # RLlib startup, skip
-            return
-        steps = 0
-        reward = sample_batch[SampleBatch.REWARDS][-1]
-        for i in range(sample_batch.count - 1, -1, -1):
-            obs = sample_batch[SampleBatch.CUR_OBS][i]
-            if obs[7] == 1:
-                continue  # skip "pass action" (other player's turn)
-            obs = obs[8:50]
-            # reshaped_obs = obs.reshape((6, 7))
-            action = sample_batch[SampleBatch.ACTIONS][i]
-            # reward = sample_batch[SampleBatch.REWARDS][i]
-            value, attempts = self.get_value(obs, action)
-            best_value = reward
-
-            if steps == 0:
-                if attempts > 0:
-                    attempts = 0
-                new_value = best_value - attempts * value
-                attempts -= 1
-                new_value /= float(-attempts)
-            else:
-                if attempts < 0:
-                    new_value = value
-                else:
-                    attempts += 1
-                    new_value = 0
-
-            self.memory[self.get_key(obs, action)] = new_value, attempts
-            reward = 0.0
-            steps += 1
-
-    def get_key(self, obs, action):
-        return tuple(obs), action
-
-    def get_value(self, obs, action):
-        key = self.get_key(obs, action)
-        if key not in self.memory:
-            return 0, 0
-        value = self.memory[key]
-        return value
-
-
-def postprocess_fn(policy, sample_batch, other_agent_batches=None, episode=None):
-    policy.update_assist(sample_batch, other_agent_batches, episode)
-    return postprocess_ppo_gae(policy, sample_batch, other_agent_batches, episode)
-
-
-def setup_mixins(policy, obs_space, action_space, config):
-    ValueNetworkMixin.__init__(policy, obs_space, action_space, config)
-    KLCoeffMixin.__init__(policy, config)
-    AssistMixin.__init__(policy)
-    EntropyCoeffSchedule.__init__(policy, config["entropy_coeff"], config["entropy_coeff_schedule"])
-    LearningRateSchedule.__init__(policy, config["lr"], config["lr_schedule"])
-
-
-AssumptionPPOTFPolicy = build_tf_policy(
-    name="AssumptionPPOTFPolicy",
-    get_default_config=lambda: ray.rllib.agents.ppo.ppo.DEFAULT_CONFIG,
-    loss_fn=ppo_surrogate_loss,
-    stats_fn=kl_and_loss_stats,
-    extra_action_fetches_fn=vf_preds_and_logits_fetches,
-    postprocess_fn=postprocess_fn,
-    gradients_fn=clip_gradients,
-    before_init=ray.rllib.agents.ppo.ppo_policy.setup_config,
-    before_loss_init=setup_mixins,
-    mixins=[
-        LearningRateSchedule, EntropyCoeffSchedule, KLCoeffMixin, ValueNetworkMixin,
-        AssistMixin
-    ])
 
 
 if __name__ == '__main__':
@@ -196,15 +43,30 @@ if __name__ == '__main__':
             'kl_coeff': 1.0,
         })
         if args.assist:
+            print('\n#############################################################')
             print('Using assumption-based learning policy: AssumptionPPOTFPolicy')
+            print('#############################################################\n')
             learner_policy = AssumptionPPOTFPolicy
-    elif args.policy == 'DQN':
+    elif args.policy in ['DQN', 'APEX']:
         tune_config.update({
-            'hiddens': [],
-            'dueling': False,
+            'dueling': False,  # not supported with parametric actions
+            'hiddens': [],     # not supported with parametric actions
+            # 'n_step': 4,
         })
+        if args.policy == 'APEX':
+            tune_config.update({
+                # 'buffer_size': 1000000,
+                'buffer_size': 50000,
+                'n_step': 1,
+                'learning_starts': 1000,
+                'train_batch_size': 10000,
+            })
         if args.assist:
-            raise ValueError('DQN assist not implemented yet')
+            print('\n#############################################################')
+            print('Using assumption-based learning policy: AssumptionDQNTFPolicy')
+            print('#############################################################\n')
+            learner_policy = AssumptionDQNTFPolicy
+
     trainable_policies = {
         f'learned{i:02d}': (learner_policy, obs_space, action_space, {'model': model_config}) for i in
         range(num_learners)}
@@ -248,7 +110,6 @@ if __name__ == '__main__':
                 },
             },
         }, **tune_config),
-        # checkpoint_freq=100,
         checkpoint_at_end=True,
         # resume=True,
         restore=args.restore,

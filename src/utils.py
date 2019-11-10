@@ -16,7 +16,8 @@ def get_worker_config(args):
     if args.debug:
         return {
             'log_level': 'DEBUG',
-            'num_workers': 1,
+            # 'num_workers': 1,
+            'num_workers': 2,
         }
     elif args.human:
         # if human player, keep it single env
@@ -28,9 +29,15 @@ def get_worker_config(args):
         return {
             'num_workers': 20,
             'num_gpus': 1,
+            'num_envs_per_worker': 32,
             'train_batch_size': 65536,
             'sgd_minibatch_size': 4096,
             'num_sgd_iter': 6,
+        }
+    elif args.policy == 'APEX':
+        return {
+            'num_workers': 20,
+            'num_gpus': 1,
             'num_envs_per_worker': 32,
         }
     else:
