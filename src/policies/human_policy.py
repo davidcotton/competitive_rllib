@@ -1,10 +1,7 @@
-import logging
 import random
 
 import numpy as np
 from ray.rllib.policy.policy import Policy
-
-logger = logging.getLogger('ray.rllib')
 
 
 class HumanPolicy(Policy):
