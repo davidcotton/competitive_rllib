@@ -17,7 +17,9 @@ class MCTSPolicy(Policy):
     def __init__(self, observation_space, action_space, config) -> None:
         super().__init__(observation_space, action_space, config)
         self.board_shape = observation_space.original_space['board'].shape
-        self.board_size = np.prod(observation_space.original_space['board'].shape)
+        self.board_start = np.prod(observation_space.original_space['action_mask'].shape).item()
+        self.board_len = np.prod(observation_space.original_space['board'].shape).item()
+        self.num_actions = action_space.n - 1  # last action is the "pass" action
         self.max_rollouts = config.get('max_rollouts', DEFAULT_MAX_ROLLOUTS)
         self.rollouts_timeout = config.get('rollouts_timeout', DEFAULT_ROLLOUTS_TIMEOUT)
         self.metrics = {'num_rollouts': []}
@@ -51,11 +53,9 @@ class MCTSPolicy(Policy):
         """
 
         actions = []
-        num_actions = self.action_space.n - 1  # last action is the "pass" action
-        board_start = self.action_space.n
-        board_end = self.action_space.n + self.board_size
+        board_end = self.board_start + self.board_len
         for obs in obs_batch:
-            action_mask, board = obs[:board_start], obs[board_start:board_end]
+            action_mask, board = obs[:self.board_start], obs[self.board_start:board_end]
             current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
             if current_player == player_id:
                 board = np.flip(board.reshape(self.board_shape), axis=0).astype(np.uint8)
@@ -66,7 +66,7 @@ class MCTSPolicy(Policy):
                 actions.append(action)
                 self.metrics['num_rollouts'].append(metrics['num_rollouts'])
             else:
-                actions.append(num_actions)  # "pass" action
+                actions.append(self.num_actions)  # "pass" action
 
         return np.array(actions), state_batches, {}
 

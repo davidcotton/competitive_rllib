@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 from ray.rllib.policy.policy import Policy
 
@@ -9,9 +7,9 @@ class HumanPolicy(Policy):
 
     def __init__(self, observation_space, action_space, config):
         super().__init__(observation_space, action_space, config)
-        obs_space = config['multiagent']['policies']['human'][1]
-        self.board_shape = obs_space['board'].shape
-        self.board_size = np.prod(self.board_shape)
+        self.board_shape = observation_space.original_space['board'].shape
+        self.board_len = np.prod(self.board_shape).item()
+        self.num_actions = action_space.n - 1  # last action is the "pass" action
 
     def compute_actions(self,
                         obs_batch,
@@ -43,15 +41,14 @@ class HumanPolicy(Policy):
 
         assert len(obs_batch) == 1  # too hard for human to play parallel games
         obs = obs_batch[0]
-        num_actions = self.action_space.n - 1
         board_start = self.action_space.n
-        board_end = self.action_space.n + self.board_size
+        board_end = self.action_space.n + self.board_len
         action_mask, board = obs[:board_start], obs[board_start:board_end]
-        current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
+        current_player, player_id = int(obs[board_end:board_end + 1]), int(obs[board_end + 1:])
         board = board.reshape(self.board_shape).astype(np.uint8)
         self._render_board(board)
 
-        valid_actions = [i for i in range(num_actions) if action_mask[i]]
+        valid_actions = [i for i in range(self.num_actions) if action_mask[i]]
         if current_player == player_id:
             action = None
             while action not in list(valid_actions):
@@ -60,7 +57,7 @@ class HumanPolicy(Policy):
                 except ValueError:
                     pass
         else:
-            action = num_actions  # "pass" action
+            action = self.num_actions  # "pass" action
 
         return np.array([action]), state_batches, {}
 

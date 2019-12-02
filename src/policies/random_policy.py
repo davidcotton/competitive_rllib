@@ -9,9 +9,9 @@ class RandomPolicy(Policy):
 
     def __init__(self, observation_space, action_space, config) -> None:
         super().__init__(observation_space, action_space, config)
-        policy_config = config['multiagent']['policies']['random']
-        obs_space = policy_config[1]
-        self.board_size = np.prod(obs_space['board'].shape)
+        self.board_start = np.prod(observation_space.original_space['action_mask'].shape).item()
+        self.board_len = np.prod(observation_space.original_space['board'].shape).item()
+        self.num_actions = action_space.n - 1  # last action is the "pass" action
 
     def compute_actions(self,
                         obs_batch,
@@ -42,17 +42,15 @@ class RandomPolicy(Policy):
         """
 
         actions = []
-        num_actions = self.action_space.n - 1  # last action is the "pass" action
-        board_start = self.action_space.n
-        board_end = self.action_space.n + self.board_size
+        board_end = self.board_start + self.board_len
         for obs in obs_batch:
-            action_mask, board = obs[:board_start], obs[board_start:board_end]
+            action_mask, board = obs[:self.board_start], obs[self.board_start:board_end]
             current_player, player_id = obs[board_end:board_end + 1].item(), obs[board_end + 1:].item()
             if current_player == player_id:
-                legal_actions = [i for i in range(num_actions) if action_mask[i]]
+                legal_actions = [i for i in range(self.num_actions) if action_mask[i]]
                 actions.append(random.choice(legal_actions))
             else:
-                actions.append(num_actions)  # "pass" action
+                actions.append(self.num_actions)  # "pass" action
 
         return np.array(actions), state_batches, {}
 
