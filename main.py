@@ -1,5 +1,4 @@
 import argparse
-import logging
 import random
 
 import ray
@@ -9,8 +8,6 @@ from ray.tune.registry import register_env
 from src.callbacks import win_matrix_on_episode_end
 from src.policies import HumanPolicy, RandomPolicy
 from src.utils import get_worker_config, get_learner_policy_configs, get_mcts_policy_configs, get_model_config
-
-logger = logging.getLogger('ray.rllib')
 
 
 if __name__ == '__main__':

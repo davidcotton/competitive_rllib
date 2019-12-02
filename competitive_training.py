@@ -1,5 +1,4 @@
 import argparse
-import logging
 import time
 import random
 
@@ -23,8 +22,6 @@ from ray.tune.registry import register_env
 from src.bandits import Exp3Bandit
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
 from src.utils import get_worker_config, get_learner_policy_configs, get_model_config
-
-logger = logging.getLogger('ray.rllib')
 
 
 MyPPOTFPolicy = build_tf_policy(
