@@ -3,7 +3,7 @@
 from ray.rllib.models import ModelCatalog
 
 from src.envs import Connect4Env
-from src.models import ParametricActionsMLP, ParametricActionsCNN
+from src.models import MaskedActionsMLP, MaskedActionsCNN
 from src.policies import MCTSPolicy
 
 
@@ -66,18 +66,18 @@ def get_model_config(use_cnn, fc_hiddens=None, fc_activation=None, conv_filters=
     conv_activation = conv_activation or 'leaky_relu'
     env_cls = Connect4Env
     if use_cnn:
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsCNN)
+        ModelCatalog.register_custom_model('masked_actions_model', MaskedActionsCNN)
         model_config = {
-            'custom_model': 'parametric_actions_model',
+            'custom_model': 'masked_actions_model',
             'conv_filters': conv_filters,
             'conv_activation': conv_activation,
             'fcnet_hiddens': fc_hiddens,
             'fcnet_activation': fc_activation,
         }
     else:
-        ModelCatalog.register_custom_model('parametric_actions_model', ParametricActionsMLP)
+        ModelCatalog.register_custom_model('masked_actions_model', MaskedActionsMLP)
         model_config = {
-            'custom_model': 'parametric_actions_model',
+            'custom_model': 'masked_actions_model',
             'fcnet_hiddens': fc_hiddens,
             'fcnet_activation': fc_activation,
         }
