@@ -6,8 +6,8 @@ from ray import tune
 from ray.tune.registry import register_env
 
 from src.policies import HumanPolicy, RandomPolicy
-from src.policies.assumption.assumption_dqn_policy import AssumptionDQNTFPolicy
-from src.policies.assumption.assumption_ppo_policy import AssumptionPPOTFPolicy
+from src.policies.assumption.assumption_dqn_policy import SimpleAssumptionDQNTFPolicy, WindowedAssumptionDQNTFPolicy
+from src.policies.assumption.assumption_ppo_policy import SimpleAssumptionPPOTFPolicy, WindowedAssumptionPPOTFPolicy
 from src.utils import get_worker_config, get_mcts_policy_configs, get_model_config
 
 
@@ -16,7 +16,8 @@ if __name__ == '__main__':
     parser.add_argument('--policy', type=str, default='PPO')
     parser.add_argument('--use-cnn', action='store_true')
     parser.add_argument('--num-learners', type=int, default=2)
-    parser.add_argument('--assist', action='store_true')
+    # parser.add_argument('--assist', action='store_true')
+    parser.add_argument('--assist', type=str, choices=['none', 'simple', 'windowed'], default='none')
     parser.add_argument('--mcts', type=int, default=0)
     # e.g. --restore="/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782"
     parser.add_argument('--restore', type=str)
@@ -42,11 +43,11 @@ if __name__ == '__main__':
             'lambda': 0.95,
             'kl_coeff': 1.0,
         })
-        if args.assist:
-            print('\n#############################################################')
-            print('Using assumption-based learning policy: AssumptionPPOTFPolicy')
-            print('#############################################################\n')
-            learner_policy = AssumptionPPOTFPolicy
+        if args.assist == 'simple':
+            learner_policy = SimpleAssumptionPPOTFPolicy
+        elif args.assist == 'windowed':
+            learner_policy = WindowedAssumptionPPOTFPolicy
+
     elif args.policy in ['DQN', 'APEX']:
         tune_config.update({
             'dueling': False,  # not supported with parametric actions
@@ -61,11 +62,13 @@ if __name__ == '__main__':
                 'learning_starts': 1000,
                 'train_batch_size': 10000,
             })
-        if args.assist:
-            print('\n#############################################################')
-            print('Using assumption-based learning policy: AssumptionDQNTFPolicy')
-            print('#############################################################\n')
-            learner_policy = AssumptionDQNTFPolicy
+        if args.assist == 'simple':
+            learner_policy = SimpleAssumptionDQNTFPolicy
+        elif args.assist == 'windowed':
+            learner_policy = WindowedAssumptionDQNTFPolicy
+    print('\n#############################################################')
+    print(learner_policy.__name__)
+    print('#############################################################\n')
 
     trainable_policies = {
         f'learned{i:02d}': (learner_policy, obs_space, action_space, {'model': model_config}) for i in
@@ -85,7 +88,7 @@ if __name__ == '__main__':
 
     def name_trial(trial):
         """Give trials a more readable name in terminal & Tensorboard."""
-        assist = 'Assist' if args.assist else 'NoAssist'
+        assist = args.assist.capitalize() + 'Assist' if args.assist != 'none' else 'NoAssist'
         mcts = f'vsMCTS{args.mcts}' if args.mcts > 0 else ''
         debug = '-debug' if args.debug else ''
         return f'{num_learners}x{trial.trainable_name}{mcts}-{assist}{debug}'
