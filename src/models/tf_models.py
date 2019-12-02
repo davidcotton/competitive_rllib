@@ -45,7 +45,7 @@ class ParametricActionsCNN(DistributionalQModel, TFModelV2):
         conv_filters = model_config['conv_filters']
         self.is_conv = bool(conv_filters)
         orig_shape = obs_space.original_space['board']
-        new_shape = orig_shape.shape + (1,) if self.is_conv else (np.prod(orig_shape.shape),)
+        new_shape = (max(orig_shape.shape),) * 2 + (1,) if self.is_conv else (np.prod(orig_shape.shape),)
         self.inputs = tf.keras.layers.Input(shape=new_shape, name='observations')
         last_layer = self.inputs
 
@@ -86,7 +86,11 @@ class ParametricActionsCNN(DistributionalQModel, TFModelV2):
 
     def forward(self, input_dict, state, seq_lens):
         obs = input_dict['obs']['board']
-        obs = tf.expand_dims(obs, -1) if self.is_conv else flatten(obs)
+        if self.is_conv:
+            paddings = [[0, 0], [0, 1], [0, 0]]
+            obs = tf.expand_dims(tf.pad(obs, paddings, mode='CONSTANT', constant_values=3), -1)
+        else:
+            obs = flatten(obs)
         action_mask = tf.maximum(tf.log(input_dict['obs']['action_mask']), tf.float32.min)
         model_out, self._value_out = self.base_model(obs)
         return action_mask + model_out, state

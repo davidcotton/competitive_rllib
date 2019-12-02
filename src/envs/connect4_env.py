@@ -119,41 +119,6 @@ class Connect4Env(MultiAgentEnv):
         return self.game.reward_draw
 
 
-class FlattenedConnect4Env(Connect4Env):
-    def __init__(self, env_config=None) -> None:
-        super().__init__(env_config)
-        board_height = self.game.board_height
-        board_width = self.game.board_width
-        self.observation_space = spaces.Dict({
-            'board': spaces.Box(low=0, high=2, shape=(board_height * board_width,), dtype=np.uint8),
-            'action_mask': spaces.Box(low=0, high=1, shape=(board_width + 1,), dtype=np.uint8),
-            'current_player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
-            'player_id': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
-        })
-
-    def get_state(self, player=None) -> np.ndarray:
-        state = super().get_state(player)
-        return np.ravel(state)
-
-
-class SquareConnect4Env(Connect4Env):
-    def __init__(self, env_config=None) -> None:
-        super().__init__(env_config)
-        board_height = self.game.board_height
-        board_width = self.game.board_width
-        self.observation_space = spaces.Dict({
-            'board': spaces.Box(low=0, high=3, shape=(board_height + 1, board_width), dtype=np.uint8),
-            'action_mask': spaces.Box(low=0, high=1, shape=(board_width + 1,), dtype=np.uint8),
-            'current_player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
-            'player_id': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
-        })
-
-    def get_state(self, player=None) -> np.ndarray:
-        state = super().get_state(player)
-        sq_obs = np.append(state, np.full((1, self.game.board_width), 3), axis=0)
-        return sq_obs
-
-
 class Connect4:
     def __init__(self, env_config=None, game_state=None) -> None:
         super().__init__()
