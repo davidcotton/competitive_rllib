@@ -54,7 +54,7 @@ if __name__ == '__main__':
         args.policy,
         name='mcts_trainer',
         trial_name_creator=name_trial,
-        stop={f'policy_reward_mean/{train_pid}': 0.8},
+        stop={f'policy_reward_mean/{train_pid}': 0.6},
         config=dict({
             'env': 'c4',
             'env_config': {},
