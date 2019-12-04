@@ -100,7 +100,7 @@ class Connect4Env(MultiAgentEnv):
 
     def get_action_mask(self, player):
         if player == self.game.player ^ 1:
-            mask = np.append(self.game.get_action_mask(), [0])
+            mask = np.array(self.game.get_action_mask() + [0])
         else:
             mask = np.zeros((8,), dtype=np.uint8)
             mask[-1] = 1
@@ -232,13 +232,12 @@ class Connect4:
                 list_moves.append(i)
         return list_moves
 
-    def get_action_mask(self) -> np.array:
+    def get_action_mask(self) -> List[int]:
         """Fetch a mask of valid actions
 
-        :return: A numpy array where 1 if valid move else 0.
+        :return: A list of ints where 1 if valid move else 0.
         """
-        return np.array([1 if self.column_counts[i] < self.board_height else 0 for i in range(self.board_width)],
-                        dtype=np.uint8)
+        return [1 if self.column_counts[i] < self.board_height else 0 for i in range(self.board_width)]
 
     def is_valid_move(self, column: int) -> bool:
         """Check if column is full.
