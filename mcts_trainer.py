@@ -49,7 +49,8 @@ if __name__ == '__main__':
     def name_trial(trial):
         """Give trials a more readable name in terminal & Tensorboard."""
         network = 'CNN' if args.use_cnn else 'MLP'
-        return f'{args.num_rollouts}x{trial.trainable_name}-{network}'
+        rollouts = args.num_rollouts
+        return f'MCTS{rollouts}vs{trial.trainable_name}-{network}'
 
     tune.run(
         args.policy,
