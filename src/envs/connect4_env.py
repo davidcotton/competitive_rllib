@@ -22,12 +22,10 @@ class Connect4Env(MultiAgentEnv):
         super().__init__()
         self.bandit = bandit
         self.game = Connect4(env_config)
-        board_height = self.game.board_height
-        board_width = self.game.board_width
-        self.action_space = spaces.Discrete(board_width + 1)
+        self.action_space = spaces.Discrete(self.game.board_width + 1)
         self.observation_space = spaces.Dict({
-            'action_mask': spaces.Box(low=0, high=1, shape=(board_width + 1,), dtype=np.uint8),
-            'board': spaces.Box(low=0, high=2, shape=(board_height, board_width), dtype=np.uint8),
+            'action_mask': spaces.Box(low=0, high=1, shape=(self.game.board_width + 1,), dtype=np.uint8),
+            'board': spaces.Box(low=0, high=2, shape=(self.game.board_height, self.game.board_width), dtype=np.uint8),
             'current_player': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
             'player_id': spaces.Box(low=0, high=1, shape=(1,), dtype=np.uint8),
         })
