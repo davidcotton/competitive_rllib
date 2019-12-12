@@ -13,11 +13,11 @@ def get_worker_config(args):
     :param args: Command line arguments
     :return: Tune configuration.
     """
-    if args.debug:
+    if args.debug and args.policy in ['PPO', 'APEX']:
         return {
             'log_level': 'DEBUG',
-            # 'num_workers': 1,
-            'num_workers': 2,
+            'num_workers': 1,
+            # 'num_workers': 2,
         }
     elif args.human:
         # if human player, keep it single env
@@ -42,7 +42,7 @@ def get_worker_config(args):
         }
     else:
         return {
-            'num_workers': 1,
+            'num_workers': 0,
             'num_gpus': 1,
         }
 
