@@ -31,10 +31,18 @@ if __name__ == '__main__':
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
     mcts_policies = get_mcts_policy_configs([8, 16, 32, 64, 128, 256, 512], obs_space, action_space)
 
-    if args.policy == 'DQN':
+    if args.policy == 'PPO':
         tune_config.update({
-            'hiddens': [],
+            'lr': 0.001,
+            'gamma': 0.995,
+            'lambda': 0.95,
+            'clip_param': 0.2,
+            'kl_coeff': 1.0,
+        })
+    elif args.policy in ['DQN', 'APEX']:
+        tune_config.update({
             'dueling': False,
+            'hiddens': [],
         })
 
     def random_policy_mapping_fn(info):
@@ -63,13 +71,7 @@ if __name__ == '__main__':
         config=dict({
             'env': 'c4',
             'env_config': {},
-            'lr': 0.001,
-            'gamma': 0.995,
-            # 'gamma': 0.9,
             # 'gamma': tune.grid_search([0.1, 0.3, 0.5, 0.7, 0.8, 0.9, 0.99, 0.999, 0.9999, 1.0]),
-            'clip_param': 0.2,
-            'lambda': 0.95,
-            # 'kl_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': random_policy_mapping_fn,
