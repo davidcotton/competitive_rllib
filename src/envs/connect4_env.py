@@ -51,7 +51,7 @@ class Connect4Env(MultiAgentEnv):
 
         Throws a ValueError if trying to drop into a full column.
 
-        :param action_dict: A dictionary of actions for each player.
+        :param action_dict: A dictionary of actions.
         :return: A tuple containing the next obs, rewards, if the game ended and an empty info dict for both player.
         """
 
