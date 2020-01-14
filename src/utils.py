@@ -16,8 +16,9 @@ def get_worker_config(args):
     if args.debug and args.policy in ['PPO', 'APEX']:
         return {
             'log_level': 'DEBUG',
-            'num_workers': 1,
-            # 'num_workers': 2,
+            # 'num_workers': 0,
+            # 'num_workers': 1,
+            'num_workers': 2,
         }
     elif args.human:
         # if human player, keep it single env
@@ -83,6 +84,26 @@ def get_model_config(use_cnn, fc_hiddens=None, fc_activation=None, conv_filters=
         }
 
     return model_config, env_cls
+
+
+def get_policy_config(policy) -> dict:
+    if policy == 'PPO':
+        return {
+            'lr': 0.001,
+            'gamma': 0.995,
+            'lambda': 0.95,
+            'clip_param': 0.2,
+            'kl_coeff': 1.0,
+        }
+    elif policy in ['DQN', 'APEX']:
+        return {
+            # 'num_atoms': 51,
+            # 'noisy': True,
+            'dueling': False,
+            'hiddens': [],
+        }
+    else:
+        return {}
 
 
 def get_learner_policy_configs(num_learners, obs_space, action_space, model_config):

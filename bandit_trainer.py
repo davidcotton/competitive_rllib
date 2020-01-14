@@ -7,7 +7,7 @@ from ray.tune.registry import register_env
 from src.bandits import Exp3Bandit
 from src.callbacks import bandit_on_episode_start, bandit_policy_mapping_fn, bandit_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
-from src.utils import get_worker_config, get_learner_policy_configs, get_model_config
+from src.utils import get_worker_config, get_learner_policy_configs, get_model_config, get_policy_config
 
 
 if __name__ == '__main__':
@@ -21,6 +21,7 @@ if __name__ == '__main__':
 
     ray.init(local_mode=args.debug)
     tune_config = get_worker_config(args)
+    tune_config.update(get_policy_config(args.policy))
 
     Exp3Bandit = ray.remote(Exp3Bandit)
     bdt = Exp3Bandit.remote(args.num_learners, 0.07)
@@ -40,11 +41,6 @@ if __name__ == '__main__':
         config=dict({
             'env': 'c4',
             'env_config': {},
-            'lr': 0.001,
-            'gamma': 0.995,
-            'clip_param': 0.2,
-            'lambda': 0.95,
-            # 'kl_coeff': 1.0,
             'multiagent': {
                 'policies_to_train': [*trainable_policies],
                 'policy_mapping_fn': bandit_policy_mapping_fn,

@@ -8,7 +8,7 @@ from ray import tune
 from ray.tune.registry import register_env
 
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
-from src.utils import get_worker_config, get_learner_policy_configs, get_model_config, EloRater
+from src.utils import get_worker_config, get_learner_policy_configs, get_model_config, get_policy_config, EloRater
 
 
 if __name__ == '__main__':
@@ -24,6 +24,7 @@ if __name__ == '__main__':
 
     ray.init(local_mode=args.debug)
     tune_config = get_worker_config(args)
+    tune_config.update(get_policy_config(args.policy))
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
@@ -67,10 +68,6 @@ if __name__ == '__main__':
         config=dict({
             'env': 'c4',
             'env_config': {},
-            'lr': 0.001,
-            'gamma': 0.995,
-            'lambda': 0.95,
-            'clip_param': 0.2,
             'multiagent': {
                 'policies_to_train': [*policies],
                 'policy_mapping_fn': policy_mapping_fn,

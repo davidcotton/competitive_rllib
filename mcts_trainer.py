@@ -9,7 +9,7 @@ from ray.tune.registry import register_env
 
 from src.callbacks import mcts_metrics_on_episode_end
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
-from src.utils import get_worker_config, get_model_config
+from src.utils import get_worker_config, get_model_config, get_policy_config
 
 
 if __name__ == '__main__':
@@ -24,25 +24,12 @@ if __name__ == '__main__':
 
     ray.init(local_mode=args.debug)
     tune_config = get_worker_config(args)
+    tune_config.update(get_policy_config(args.policy))
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
     env = env_cls()
     obs_space, action_space = env.observation_space, env.action_space
-
-    if args.policy == 'PPO':
-        tune_config.update({
-            'lr': 0.001,
-            'gamma': 0.995,
-            'lambda': 0.95,
-            'clip_param': 0.2,
-            'kl_coeff': 1.0,
-        })
-    elif args.policy in ['DQN', 'APEX']:
-        tune_config.update({
-            'dueling': False,
-            'hiddens': [],
-        })
 
     if args.save_experience:
         tune_config['output'] = 'experience'
@@ -80,6 +67,7 @@ if __name__ == '__main__':
             },
             'callbacks': {'on_episode_end': mcts_metrics_on_episode_end},
         }, **tune_config),
+        checkpoint_freq=100,
         checkpoint_at_end=True,
-        # resume=True
+        resume=True
     )

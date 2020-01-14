@@ -7,7 +7,8 @@ from ray.tune.registry import register_env
 
 from src.callbacks import win_matrix_on_episode_end
 from src.policies import HumanPolicy, RandomPolicy
-from src.utils import get_worker_config, get_learner_policy_configs, get_mcts_policy_configs, get_model_config
+from src.utils import get_worker_config, get_learner_policy_configs, get_mcts_policy_configs, get_model_config, \
+    get_policy_config
 
 
 if __name__ == '__main__':
@@ -23,6 +24,7 @@ if __name__ == '__main__':
 
     ray.init(local_mode=args.debug)
     tune_config = get_worker_config(args)
+    tune_config.update(get_policy_config(args.policy))
 
     model_config, env_cls = get_model_config(args.use_cnn)
     register_env('c4', lambda cfg: env_cls(cfg))
@@ -30,20 +32,6 @@ if __name__ == '__main__':
     obs_space, action_space = env.observation_space, env.action_space
     trainable_policies = get_learner_policy_configs(args.num_learners, obs_space, action_space, model_config)
     mcts_policies = get_mcts_policy_configs([8, 16, 32, 64, 128, 256, 512], obs_space, action_space)
-
-    if args.policy == 'PPO':
-        tune_config.update({
-            'lr': 0.001,
-            'gamma': 0.995,
-            'lambda': 0.95,
-            'clip_param': 0.2,
-            'kl_coeff': 1.0,
-        })
-    elif args.policy in ['DQN', 'APEX']:
-        tune_config.update({
-            'dueling': False,
-            'hiddens': [],
-        })
 
     def random_policy_mapping_fn(info):
         if args.human:
