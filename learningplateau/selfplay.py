@@ -35,7 +35,7 @@ mcts_eval_rollouts = [32, 64, 128]
 mcts_eval_policies = get_mcts_policy_configs(mcts_eval_rollouts, obs_space, action_space)
 
 
-def eval_mcts_opponent_policy_mapping_fn(info):
+def eval_policy_mapping_fn(info):
     eval_policies = ['learned00', random.choice([*mcts_eval_policies])]
     random.shuffle(eval_policies)
     return eval_policies
@@ -55,8 +55,8 @@ tune.run(
         # 'timesteps_total': int(1e9),
     },
     config=dict({
-        # 'env': 'c4',
-        'env': tune.grid_search(['c4', 'c4']),
+        'env': 'c4',
+        # 'env': tune.grid_search(['c4', 'c4', 'c4']),
         'multiagent': {
             'policies_to_train': [*trainable_policies],
             'policy_mapping_fn': lambda _: ['learned00', 'learned00'],
@@ -70,9 +70,7 @@ tune.run(
         'evaluation_interval': 10,
         # 'evaluation_interval': 100,
         'evaluation_num_episodes': 1,
-        'evaluation_config': {
-            'multiagent': {'policy_mapping_fn': eval_mcts_opponent_policy_mapping_fn}
-        },
+        'evaluation_config': {'multiagent': {'policy_mapping_fn': eval_policy_mapping_fn}},
     }, **tune_config),
     # checkpoint_freq=100,
     checkpoint_at_end=True,
