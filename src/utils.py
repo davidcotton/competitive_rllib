@@ -96,12 +96,20 @@ def get_policy_config(policy) -> dict:
             'kl_coeff': 1.0,
         }
     elif policy in ['DQN', 'APEX']:
-        return {
+        config = {
             # 'num_atoms': 51,
             # 'noisy': True,
             'dueling': False,
             'hiddens': [],
         }
+        if policy == 'APEX':
+            config.update({
+                # 'buffer_size': 50000,
+                # 'n_step': 1,
+                # 'learning_starts': 1000,
+                # 'train_batch_size': 10000,
+            })
+        return config
     else:
         return {}
 
