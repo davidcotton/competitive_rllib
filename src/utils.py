@@ -101,6 +101,9 @@ def get_policy_config(policy) -> dict:
             # 'noisy': True,
             'dueling': False,
             'hiddens': [],
+            'exploration_final_eps': 0.002,
+            'soft_q': True,
+            'softmax_temp': 0.02,
         }
         if policy == 'APEX':
             config.update({
