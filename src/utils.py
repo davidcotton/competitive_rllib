@@ -137,7 +137,7 @@ def get_mcts_policy_configs(rollouts, obs_space, action_space):
     :param action_space: The environment action space.
     :return: A dict of MCTS policy configs, e.g. {policy_key: policy_constructor_params}
     """
-    return {f'mcts{i:03d}': (MCTSPolicy, obs_space, action_space, {'max_rollouts': i}) for i in rollouts}
+    return {f'mcts{i:04d}': (MCTSPolicy, obs_space, action_space, {'max_rollouts': i}) for i in rollouts}
 
 
 class EloRater:

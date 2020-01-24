@@ -8,7 +8,7 @@ from ray import tune
 from ray.tune.registry import register_env
 
 from src.policies import HumanPolicy, MCTSPolicy, RandomPolicy
-from src.utils import get_worker_config, get_model_config, get_policy_config
+from src.utils import get_worker_config, get_model_config, get_policy_config, get_mcts_policy_configs
 
 
 parser = argparse.ArgumentParser()
@@ -33,7 +33,9 @@ if args.save_experience:
     tune_config['output'] = 'experience'
 
 train_pid = 'learned00'
-mcts_pid = f'mcts{args.num_rollouts:03d}'
+mcts_pid = f'mcts{args.num_rollouts:04d}'
+mcts_rollouts = [4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048]
+mcts_policies = get_mcts_policy_configs(mcts_rollouts, obs_space, action_space)
 policies = [train_pid, 'human'] if args.human else [train_pid, mcts_pid]
 
 
@@ -56,13 +58,14 @@ tune.run(
             'policy_mapping_fn': lambda _: random.sample(policies, k=2),
             'policies': {
                 train_pid: (None, obs_space, action_space, {'model': model_config}),
-                mcts_pid: (MCTSPolicy, obs_space, action_space, {'max_rollouts': args.num_rollouts}),
+                **mcts_policies,
                 'human': (HumanPolicy, obs_space, action_space, {}),
                 'random': (RandomPolicy, obs_space, action_space, {}),
+                'rollouts': (MCTSPolicy, obs_space, action_space, {'max_rollouts': 3}),
             },
         },
     }, **tune_config),
-    checkpoint_freq=100,
+    # checkpoint_freq=20,
     checkpoint_at_end=True,
     resume=args.resume
 )
