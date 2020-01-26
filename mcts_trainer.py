@@ -19,6 +19,8 @@ parser.add_argument('--debug', action='store_true')
 parser.add_argument('--human', action='store_true')
 parser.add_argument('--save-experience', action='store_true')
 parser.add_argument('--resume', action='store_true')
+# e.g. --restore="/home/dave/ray_results/main/PPO_c4_0_2019-09-23_16-17-45z9x1oc9j/checkpoint_782/checkpoint-782"
+parser.add_argument('--restore', type=str)
 args = parser.parse_args()
 
 ray.init(local_mode=args.debug)
@@ -67,5 +69,6 @@ tune.run(
     }, **tune_config),
     # checkpoint_freq=20,
     checkpoint_at_end=True,
-    resume=args.resume
+    resume=args.resume,
+    restore=args.restore,
 )
