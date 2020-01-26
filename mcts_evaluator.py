@@ -68,7 +68,7 @@ tune.run(
     name='mcts_evaluator',
     trial_name_creator=name_trial,
     stop={
-        'episodes_total': 1000,
+        'episodes_this_iter': 1000,
     },
     config=dict({
         'env': 'c4',
