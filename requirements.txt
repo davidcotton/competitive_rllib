@@ -1,5 +1,5 @@
 numpy==1.16.4
-opencv-python==3.4.3.18
+opencv-python==3.4.7.28
 pandas
 ray[rllib, debug]==0.7.6
 requests
