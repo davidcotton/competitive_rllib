@@ -5,4 +5,4 @@ ray[rllib, debug]==0.7.6
 requests
 scipy
 tensorboard==1.15.0
-tensorflow-gpu==1.15.2
+tensorflow-gpu==2.6.4
