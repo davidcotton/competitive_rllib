@@ -1,4 +1,4 @@
-numpy==1.16.4
+numpy==1.22.0
 opencv-python==3.4.3.18
 pandas
 ray[rllib, debug]==0.7.6
